@@ -1,0 +1,33 @@
+# Add these blocks to the VPS Caddyfile (Caddy running on the host).
+# Replace the domains; each needs a DNS A record pointing at the VPS.
+# Caddy gets HTTPS certificates automatically.
+
+# Web app (static files from `npm run build:web`, copied to /var/www/myrooms).
+app.example.com {
+	root * /var/www/myrooms
+	encode zstd gzip
+	# Single-page app: unknown paths fall back to index.html.
+	try_files {path} /index.html
+	file_server
+	# Hashed JS/CSS/WASM files never change; index.html must always be fresh.
+	@hashed path /_expo/static/* /@powersync/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	header /index.html Cache-Control "no-cache"
+}
+
+# Supabase API gateway (REST, Auth, Storage, Realtime) + Studio dashboard.
+api.example.com {
+	reverse_proxy localhost:8000
+}
+
+# PowerSync sync service (long-lived streaming connections).
+sync.example.com {
+	reverse_proxy localhost:8080 {
+		flush_interval -1
+	}
+}
+
+# If Caddy runs in Docker instead of on the host, attach it to the
+# `supabase_default` and `myrooms-powersync_default` networks, mount
+# /var/www/myrooms into the container, and use `reverse_proxy kong:8000` /
+# `reverse_proxy powersync:8080` instead.

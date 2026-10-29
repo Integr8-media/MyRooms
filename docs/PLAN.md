@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Planning** (no code yet). Last updated: 2026-10-29.
+> Status: **Phase 0 in progress** (branch `feature/phase-0-foundations`). Last updated: 2026-10-29.
 
 ## 1. Product summary
 
@@ -10,10 +10,10 @@ It runs on **Windows (desktop app)**, **Android / iOS**, and the **Web**, sharin
 
 ### Who uses it
 
-| Role | Can do |
-|---|---|
-| **Owner** | Everything across all branches: branches, stations, prices, staff, feature toggles, all reports and income. |
-| **Branch manager** | Everything inside their branch(es): stations, sessions, reservations, expenses, branch reports. No org-wide settings. |
+| Role                | Can do                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Owner**           | Everything across all branches: branches, stations, prices, staff, feature toggles, all reports and income.                         |
+| **Branch manager**  | Everything inside their branch(es): stations, sessions, reservations, expenses, branch reports. No org-wide settings.               |
 | **Cashier / staff** | Start/stop/extend sessions, make reservations, add snacks, take payments. No price edits, no income reports beyond their own shift. |
 
 ### Key concepts (glossary)
@@ -31,18 +31,18 @@ It runs on **Windows (desktop app)**, **Android / iOS**, and the **Web**, sharin
 
 ## 2. Confirmed requirements
 
-| Area | Decision |
-|---|---|
-| Platforms | Windows, Android, iOS, Web |
-| Tech | **Expo (React Native + TypeScript)** for mobile + web; **Tauri** wraps the web build as the Windows desktop app |
-| Data | **Cloud backend + offline cache** — real-time sync across devices, keeps working offline |
-| Tenancy | **Multiple branches + roles** (Owner / Manager / Cashier) |
-| Session types | Open walk-in, fixed-duration walk-in, advance reservations |
-| Pricing | Rate **per station type**; **player-count rates** (PS rooms: e.g. 2 vs 4 players); **time-based rates** (peak hours, weekends, hour packages) |
-| Payment methods | Cash, Visa, Instapay (recorded in the app; not processed by it — see assumptions) |
-| Optional modules | **Customers**, **Snacks & drinks (with stock)**, **Expenses** — each can be switched on/off **per organization**, **default ON** |
-| Always-on | Station maintenance status (out of service → can't be booked) |
-| Locale | **Arabic + English** with full RTL support; currency **EGP** |
+| Area             | Decision                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Platforms        | Windows, Android, iOS, Web                                                                                                                    |
+| Tech             | **Expo (React Native + TypeScript)** for mobile + web; **Tauri** wraps the web build as the Windows desktop app                               |
+| Data             | **Cloud backend + offline cache** — real-time sync across devices, keeps working offline                                                      |
+| Tenancy          | **Multiple branches + roles** (Owner / Manager / Cashier)                                                                                     |
+| Session types    | Open walk-in, fixed-duration walk-in, advance reservations                                                                                    |
+| Pricing          | Rate **per station type**; **player-count rates** (PS rooms: e.g. 2 vs 4 players); **time-based rates** (peak hours, weekends, hour packages) |
+| Payment methods  | Cash, Visa, Instapay (recorded in the app; not processed by it — see assumptions)                                                             |
+| Optional modules | **Customers**, **Snacks & drinks (with stock)**, **Expenses** — each can be switched on/off **per organization**, **default ON**              |
+| Always-on        | Station maintenance status (out of service → can't be booked)                                                                                 |
+| Locale           | **Arabic + English** with full RTL support; currency **EGP**                                                                                  |
 
 ### Assumptions (please confirm or correct)
 
@@ -72,20 +72,20 @@ It runs on **Windows (desktop app)**, **Android / iOS**, and the **Web**, sharin
 
 ### Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| App framework | Expo SDK (latest stable), Expo Router, TypeScript (strict) | One codebase for iOS, Android, Web; file-based routing works on all three. |
-| Windows | Tauri v2 wrapping the Expo web export | Small installer (~10 MB), native notifications, auto-updater. |
-| Styling / UI | NativeWind (Tailwind for RN) + a small in-house component kit | Same styles on native and web; RTL-friendly logical properties (`ps-`, `pe-`). |
-| State / data | PowerSync (local SQLite ↔ Supabase sync) + Zustand for UI state | Offline-first: reads/writes go to local DB instantly and sync in the background. Works on native, web, and inside Tauri. |
-| Backend | Supabase: Postgres, Auth, Row Level Security, Realtime, Edge Functions | Managed Postgres with per-row access control for multi-branch roles. |
-| Forms / validation | react-hook-form + zod (schemas shared with Edge Functions) | One set of validation rules for client and server. |
-| i18n | i18next + react-i18next + expo-localization | ar/en, RTL switching, number/date formatting. |
-| Dates | date-fns + date-fns-tz | Timezone-safe calculations (Africa/Cairo). |
-| Charts | react-native-gifted-charts (SVG, works on web) | Income charts on all platforms. |
-| Notifications | expo-notifications (mobile), Tauri notification plugin (Windows), Web Notifications API | "Session ends in 5 minutes" alerts. |
-| Testing | Jest + React Native Testing Library, Playwright (web E2E), pgTAP (database & RLS) | Pricing and permissions are the riskiest logic; they get the most tests. |
-| CI/CD | GitHub Actions; EAS Build/Submit; Tauri build action; web on Vercel or Cloudflare Pages | Automated builds for all four targets. |
+| Layer              | Choice                                                                                  | Why                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| App framework      | Expo SDK (latest stable), Expo Router, TypeScript (strict)                              | One codebase for iOS, Android, Web; file-based routing works on all three.                                               |
+| Windows            | Tauri v2 wrapping the Expo web export                                                   | Small installer (~10 MB), native notifications, auto-updater.                                                            |
+| Styling / UI       | NativeWind (Tailwind for RN) + a small in-house component kit                           | Same styles on native and web; RTL-friendly logical properties (`ps-`, `pe-`).                                           |
+| State / data       | PowerSync (local SQLite ↔ Supabase sync) + Zustand for UI state                         | Offline-first: reads/writes go to local DB instantly and sync in the background. Works on native, web, and inside Tauri. |
+| Backend            | Supabase: Postgres, Auth, Row Level Security, Realtime, Edge Functions                  | Managed Postgres with per-row access control for multi-branch roles.                                                     |
+| Forms / validation | react-hook-form + zod (schemas shared with Edge Functions)                              | One set of validation rules for client and server.                                                                       |
+| i18n               | i18next + react-i18next + expo-localization                                             | ar/en, RTL switching, number/date formatting.                                                                            |
+| Dates              | date-fns + date-fns-tz                                                                  | Timezone-safe calculations (Africa/Cairo).                                                                               |
+| Charts             | react-native-gifted-charts (SVG, works on web)                                          | Income charts on all platforms.                                                                                          |
+| Notifications      | expo-notifications (mobile), Tauri notification plugin (Windows), Web Notifications API | "Session ends in 5 minutes" alerts.                                                                                      |
+| Testing            | Jest + React Native Testing Library, Playwright (web E2E), pgTAP (database & RLS)       | Pricing and permissions are the riskiest logic; they get the most tests.                                                 |
+| CI/CD              | GitHub Actions; EAS Build/Submit; Tauri build action; web on Vercel or Cloudflare Pages | Automated builds for all four targets.                                                                                   |
 
 ### Important design rules
 
@@ -142,25 +142,26 @@ This logic lives in one shared TypeScript module (used by the app for estimates 
 
 ## 5. Main screens
 
-| Screen | Purpose |
-|---|---|
+| Screen                | Purpose                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Live floor** (home) | Grid of all stations in the branch, color-coded: Free / Active / Ending soon / Overtime / Reserved soon / Maintenance. Each card shows the timer, players and running cost. One tap to start, extend, add snacks, or check out. |
-| **Calendar** | Timeline: stations as rows, time as columns (day view; week view on large screens). Create a reservation by dragging an empty slot; drag to move, resize to change duration. Filter by PC / PS / type. |
-| **Session sheet** | Details of one session: customer, players, segments, snacks, live bill, actions (extend, change players, move station, end). |
-| **Checkout** | Bill breakdown, discount, payment method(s) (Cash / Visa / Instapay, split allowed), confirm. |
-| **Income dashboard** | Today / week / month / custom range: income total, by payment method, by branch, by station type, busiest hours, utilization %; net profit when Expenses is on. |
-| **Customers*** | List, search by phone, history, default discount. |
-| **Snacks & stock*** | Products, prices, stock levels, restock, low-stock warning. |
-| **Expenses*** | Add/list expenses by category and branch. |
-| **Settings** | Organization, branches, station types, stations, rate rules, packages, staff & roles, feature toggles, language. |
+| **Calendar**          | Timeline: stations as rows, time as columns (day view; week view on large screens). Create a reservation by dragging an empty slot; drag to move, resize to change duration. Filter by PC / PS / type.                          |
+| **Session sheet**     | Details of one session: customer, players, segments, snacks, live bill, actions (extend, change players, move station, end).                                                                                                    |
+| **Checkout**          | Bill breakdown, discount, payment method(s) (Cash / Visa / Instapay, split allowed), confirm.                                                                                                                                   |
+| **Income dashboard**  | Today / week / month / custom range: income total, by payment method, by branch, by station type, busiest hours, utilization %; net profit when Expenses is on.                                                                 |
+| **Customers***        | List, search by phone, history, default discount.                                                                                                                                                                               |
+| **Snacks & stock***   | Products, prices, stock levels, restock, low-stock warning.                                                                                                                                                                     |
+| **Expenses***         | Add/list expenses by category and branch.                                                                                                                                                                                       |
+| **Settings**          | Organization, branches, station types, stations, rate rules, packages, staff & roles, feature toggles, language.                                                                                                                |
 
 ## 6. Implementation phases
 
 Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that the client can use daily; 7–10 complete v1.
 
 ### Phase 0 — Foundations
+
 - Expo + TypeScript + Expo Router project; lint, format, strict types, Jest.
-- Folder structure (`app/` routes, `src/features/*`, `src/domain/*` for pure logic, `src/ui/*`).
+- Folder structure (`src/app/` routes, `src/features/*`, `src/domain/*` for pure logic, `src/ui/*`, `src/lib/*` for infrastructure).
 - Tauri v2 shell that loads the web build; confirm it runs on Windows.
 - Supabase project (dev + prod), migrations in git, local Supabase for development.
 - PowerSync connected end-to-end with one sample table (prove offline write → sync works on mobile, web and Tauri).
@@ -170,6 +171,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** a "hello" screen runs on Android, iOS, Web and Windows in both languages, and a record written offline syncs once back online.
 
 ### Phase 1 — Accounts, branches, roles
+
 - Sign up / login (email + password; phone OTP optional later), password reset.
 - Create organization on first login (owner), create branches.
 - Invite staff by email, assign role and branches.
@@ -179,6 +181,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** owner, manager and cashier each see only what they're allowed to, verified by automated tests.
 
 ### Phase 2 — Stations and pricing setup
+
 - CRUD for station types (PC desk / PS room) and stations; maintenance on/off.
 - Rate rules editor: base hourly price, player-count rates, peak/weekend time rules, priority.
 - Hour packages.
@@ -188,6 +191,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** the owner can set up the client's real center and the price preview matches hand-calculated examples.
 
 ### Phase 3 — Live floor and walk-in sessions
+
 - Live floor grid with real-time status and timers (synced across devices).
 - Start **open** session, start **fixed** session (pick duration or package).
 - Extend, change player count (new segment), move to another station, end session.
@@ -197,6 +201,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** staff can run walk-in customers for a full day from any device, with alerts.
 
 ### Phase 4 — Checkout and payments
+
 - Server-side final bill calculation on end.
 - Checkout screen: breakdown, manual discount (permission-controlled), payment method(s), split payments.
 - Void / refund with reason (owner/manager only), all audited.
@@ -205,6 +210,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** every completed session has a correct bill and recorded payment(s) by method.
 
 ### Phase 5 — Income dashboard (basic)
+
 - Today / this week / this month / custom range.
 - Totals by payment method (Cash / Visa / Instapay), by branch, by station type.
 - Cashier view: only their own collections for the current day (end-of-shift check).
@@ -212,6 +218,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** the owner can open the app on their phone and see today's income per method and branch.
 
 ### Phase 6 — Calendar and reservations
+
 - Timeline calendar (day view; week view on tablet/desktop) with stations as rows.
 - Create reservation from an empty slot; drag to move / resize; edit; cancel.
 - Conflict prevention (database constraint) + clear offline-conflict resolution UI.
@@ -221,6 +228,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** reservations and walk-ins live together with no double booking, even when two devices book at once. → **MVP pilot at the client's center.**
 
 ### Phase 7 — Optional modules (behind the feature toggles)
+
 - **Customers**: create/search by phone during session start, history, default discount.
 - **Snacks & drinks**: products, add items to a session, items appear on the bill, stock decreases on sale, restock and adjustments, low-stock warning.
 - **Expenses**: categories, add/list by branch, payment method.
@@ -229,31 +237,34 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 **Done when:** each module works when on and disappears cleanly when off.
 
 ### Phase 8 — Advanced reports
+
 - Net profit (income − expenses) when Expenses is on.
 - Utilization % per station / type, busiest hours heat map, top customers, snack sales.
 - Compare branches and periods; export CSV / PDF.
 
 ### Phase 9 — Offline hardening and reliability
+
 - Test a full day offline at the center, then sync; conflict scenarios (two devices, same station).
 - Sync status indicator, retry, "last synced" time.
 - Error tracking (Sentry), performance pass on large stations counts, backup/restore check.
 
 ### Phase 10 — Release
+
 - App icons, splash, store listings (Arabic + English).
 - EAS builds → Google Play + App Store; Tauri Windows installer (signed) with auto-update; web deployed on a custom domain.
 - Short user guide for owner and staff; onboarding wizard for a new organization.
 
 ## 7. Risks and how we handle them
 
-| Risk | Mitigation |
-|---|---|
-| Expo has no native Windows target | Tauri wraps the web build; proven in Phase 0 before any features. |
-| Offline + multiple devices → double bookings | Server-side exclusion constraint; conflict UI; tested in Phases 6 and 9. |
-| Pricing mistakes lose the client money | One shared, heavily unit-tested pricing module; server computes the final bill; price-preview tool. |
-| Cross-platform calendar timeline (no good ready-made library for RN + web) | Build a focused custom timeline component; keep it to day/week views. |
-| RTL layout bugs | Arabic checked from Phase 0; logical (start/end) styles only. |
-| Staff misuse (deleting sessions, unrecorded discounts) | Role permissions, audit log, voids require manager/owner. |
-| Running costs (Supabase, PowerSync, app stores, code signing) | Start on free tiers; estimate monthly cost before pilot. |
+| Risk                                                                       | Mitigation                                                                                          |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Expo has no native Windows target                                          | Tauri wraps the web build; proven in Phase 0 before any features.                                   |
+| Offline + multiple devices → double bookings                               | Server-side exclusion constraint; conflict UI; tested in Phases 6 and 9.                            |
+| Pricing mistakes lose the client money                                     | One shared, heavily unit-tested pricing module; server computes the final bill; price-preview tool. |
+| Cross-platform calendar timeline (no good ready-made library for RN + web) | Build a focused custom timeline component; keep it to day/week views.                               |
+| RTL layout bugs                                                            | Arabic checked from Phase 0; logical (start/end) styles only.                                       |
+| Staff misuse (deleting sessions, unrecorded discounts)                     | Role permissions, audit log, voids require manager/owner.                                           |
+| Running costs (Supabase, PowerSync, app stores, code signing)              | Start on free tiers; estimate monthly cost before pilot.                                            |
 
 ## 8. Backlog (after v1)
 

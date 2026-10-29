@@ -1,0 +1,13 @@
+# Supabase override: bind the API gateway and the Postgres pooler to 127.0.0.1 only.
+# Caddy (on the host) is the single public entry point, over HTTPS.
+# Docker-published ports bypass host firewalls (ufw/iptables), so this matters.
+# Enable with: sh run.sh config add localonly
+services:
+  api-gw:
+    ports: !override
+      - 127.0.0.1:${API_GW_HTTP_PORT:-8000}:8000/tcp
+
+  supavisor:
+    ports: !override
+      - 127.0.0.1:${POSTGRES_PORT}:5432
+      - 127.0.0.1:${POOLER_PROXY_PORT_TRANSACTION}:6543

@@ -1,0 +1,32 @@
+{
+  "app": {
+    "name": "MyRooms",
+    "tagline": "Gaming center management"
+  },
+  "home": {
+    "hello": "Hello!",
+    "intro": "Phase 0 foundations: one codebase for Android, iOS, Web and Windows."
+  },
+  "settings": {
+    "language": "Language",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark"
+  },
+  "sync": {
+    "title": "Offline sync check",
+    "description": "Records are saved on this device first and uploaded when online.",
+    "add": "Add record",
+    "empty": "No records yet.",
+    "status": "Status",
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Syncing…",
+    "pending": "Waiting to upload: {{count}}",
+    "lastSynced": "Last synced: {{time}}",
+    "never": "never",
+    "notConfigured": "Backend not configured — records stay on this device only. See README to connect Supabase and PowerSync.",
+    "recordNote": "Record from {{platform}}"
+  }
+}
