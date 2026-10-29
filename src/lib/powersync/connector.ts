@@ -5,7 +5,7 @@ import {
 } from '@powersync/common';
 
 import { config } from '@/lib/config';
-import { ensureSession, getSupabase } from '@/lib/supabase/client';
+import { getSupabase } from '@/lib/supabase/client';
 
 /**
  * Postgres error classes that will never succeed on retry
@@ -16,8 +16,11 @@ const FATAL_RESPONSE_CODES = [/^22...$/, /^23...$/, /^42501$/];
 
 export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
-    const session = await ensureSession();
-    if (!session) throw new Error('No Supabase session');
+    const { data, error } = await getSupabase().auth.getSession();
+    if (error) throw error;
+    const session = data.session;
+    // Signed out: PowerSync stays disconnected until the next sign-in.
+    if (!session) return null;
     return { endpoint: config.powersyncUrl, token: session.access_token };
   }
 
@@ -32,9 +35,12 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         let result;
         switch (op.op) {
           case UpdateType.PUT:
-            result = await table.upsert({ ...op.opData, id: op.id });
+            // A local INSERT. Plain insert (ON CONFLICT DO NOTHING) so a retried upload
+            // is harmless and no UPDATE privilege is needed on server-owned columns.
+            result = await table.upsert({ ...op.opData, id: op.id }, { ignoreDuplicates: true });
             break;
           case UpdateType.PATCH:
+            // Only the changed columns are sent.
             result = await table.update(op.opData ?? {}).eq('id', op.id);
             break;
           case UpdateType.DELETE:

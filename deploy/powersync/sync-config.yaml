@@ -1,9 +1,53 @@
 # PowerSync Sync Streams: which rows each signed-in user downloads to their device.
-# Phase 1 replaces this with org/branch-scoped streams that mirror the RLS policies.
+# These mirror the RLS policies in supabase/migrations (RLS is still what protects writes).
+#   owner    everything in their organizations
+#   manager  their branches, the staff of those branches, invitations they sent
+#   cashier  their branches and their own membership
 config:
   edition: 3
 
 streams:
-  my_sync_checks:
+  # The signed-in user's own memberships and branch assignments.
+  my_account:
     auto_subscribe: true
-    query: SELECT * FROM sync_checks WHERE user_id = auth.user_id()
+    queries:
+      - SELECT * FROM memberships WHERE user_id = auth.user_id()
+      - SELECT * FROM member_branches WHERE user_id = auth.user_id()
+
+  my_organizations:
+    auto_subscribe: true
+    query: SELECT * FROM organizations WHERE id IN (SELECT org_id FROM memberships WHERE user_id = auth.user_id())
+
+  # Branches the user is assigned to (managers and cashiers).
+  assigned_branches:
+    auto_subscribe: true
+    query: SELECT * FROM branches WHERE id IN (SELECT branch_id FROM member_branches WHERE user_id = auth.user_id())
+
+  # Owners: every branch, member and invitation of their organizations.
+  owner_data:
+    auto_subscribe: true
+    with:
+      owned_orgs: SELECT org_id FROM memberships WHERE user_id = auth.user_id() AND role = 'owner'
+    queries:
+      - SELECT * FROM branches WHERE org_id IN owned_orgs
+      - SELECT * FROM memberships WHERE org_id IN owned_orgs
+      - SELECT * FROM member_branches WHERE org_id IN owned_orgs
+      - SELECT * FROM invitations WHERE org_id IN owned_orgs
+
+  # Managers: branch assignments in the branches they manage...
+  manager_branch_staff:
+    auto_subscribe: true
+    with:
+      managed_branches: SELECT branch_id FROM member_branches WHERE membership_id IN (SELECT id FROM memberships WHERE user_id = auth.user_id() AND role = 'manager')
+    queries:
+      - SELECT * FROM member_branches WHERE branch_id IN managed_branches
+
+  # ...and the memberships (name, email, role) of the people working there.
+  manager_members:
+    auto_subscribe: true
+    query: SELECT * FROM memberships WHERE id IN (SELECT membership_id FROM member_branches WHERE branch_id IN (SELECT branch_id FROM member_branches WHERE membership_id IN (SELECT id FROM memberships WHERE user_id = auth.user_id() AND role = 'manager')))
+
+  # Invitations the user sent (managers inviting cashiers).
+  sent_invitations:
+    auto_subscribe: true
+    query: SELECT * FROM invitations WHERE invited_by = auth.user_id()
