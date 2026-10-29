@@ -1,0 +1,602 @@
+<title>MyRooms Deploy Runbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: runbook — sticky step index on the left, numbered steps on the right; one column on phones. */
+:root {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --ink: #141a2e;
+  --muted: #5b6380;
+  --line: #dde1ee;
+  --accent: #4f46e5;
+  --accent-soft: #eceafe;
+  --code-bg: #10142a;
+  --code-ink: #e3e6f5;
+  --ok: #15803d;
+  --ok-soft: #e3f5e9;
+  --warn: #b45309;
+  --warn-soft: #fdf1df;
+  --plan: #64748b;
+  --plan-soft: #eef0f5;
+  --font-body: "Hanken Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0e1c; --panel: #13182c; --ink: #e8eaf6; --muted: #9aa2c0; --line: #262d48;
+    --accent: #8b87ff; --accent-soft: #1f1f47; --code-bg: #070914; --code-ink: #dfe3f7;
+    --ok: #4ade80; --ok-soft: #0f2a1c; --warn: #fbbf24; --warn-soft: #2e2410; --plan: #94a3b8; --plan-soft: #1a2036;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0e1c; --panel: #13182c; --ink: #e8eaf6; --muted: #9aa2c0; --line: #262d48;
+  --accent: #8b87ff; --accent-soft: #1f1f47; --code-bg: #070914; --code-ink: #dfe3f7;
+  --ok: #4ade80; --ok-soft: #0f2a1c; --warn: #fbbf24; --warn-soft: #2e2410; --plan: #94a3b8; --plan-soft: #1a2036;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+a { color: var(--accent); }
+h1, h2, h3 { line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.05rem; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--accent-soft); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+header.top { padding-block: 40px 28px; display: grid; gap: 14px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.lede { color: var(--muted); font-size: 1.08rem; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip strong { color: var(--ink); }
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; padding-top: 32px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; display: grid; gap: 2px; font-size: 0.92rem; }
+nav.toc .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+nav.toc .label:first-child { margin-top: 0; }
+nav.toc a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 6px; display: flex; gap: 8px; align-items: baseline; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--accent-soft); color: var(--ink); outline: none; }
+nav.toc a .n { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); min-width: 1.6em; }
+nav.toc a.done { text-decoration: line-through; opacity: 0.6; }
+.progress { margin-top: 12px; font-size: 0.82rem; color: var(--muted); }
+.bar { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+.bar > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+
+main { display: grid; gap: 48px; min-width: 0; }
+section { display: grid; gap: 16px; scroll-margin-top: 20px; min-width: 0; }
+.section-head { display: grid; gap: 6px; }
+
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; overflow-x: auto; }
+.diagram svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.diagram text { font-family: var(--font-body); fill: var(--ink); }
+.diagram .sub { fill: var(--muted); font-size: 12px; }
+.diagram .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.diagram .box.hl { stroke: var(--accent); fill: var(--accent-soft); }
+.diagram .wire { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.diagram .arrow { fill: var(--muted); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: start; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.ph { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+
+.pill { display: inline-block; font-size: 0.74rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.wip { background: var(--warn-soft); color: var(--warn); }
+.pill.plan { background: var(--plan-soft); color: var(--plan); }
+
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: grid; gap: 14px; min-width: 0; }
+.step.is-done { border-color: var(--ok); }
+.step-head { display: flex; gap: 14px; align-items: flex-start; }
+.step-num { font-family: var(--font-mono); font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 4px 9px; font-size: 0.9rem; flex: none; }
+.step-title { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.where { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+.where b { color: var(--ink); }
+.done-toggle { flex: none; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); cursor: pointer; user-select: none; }
+.done-toggle input { width: 18px; height: 18px; accent-color: var(--ok); cursor: pointer; }
+.step ul, .step ol { margin: 0; padding-inline-start: 1.25em; display: grid; gap: 6px; max-width: 72ch; }
+.check { display: flex; gap: 10px; align-items: baseline; background: var(--ok-soft); color: var(--ink); border-radius: 8px; padding: 10px 12px; font-size: 0.92rem; }
+.check::before { content: "Check"; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ok); flex: none; }
+.note { display: flex; gap: 10px; align-items: baseline; background: var(--warn-soft); border-radius: 8px; padding: 10px 12px; font-size: 0.92rem; }
+.note::before { content: "Note"; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--warn); flex: none; }
+
+.code { position: relative; background: var(--code-bg); border-radius: 10px; min-width: 0; }
+.code pre { margin: 0; padding: 14px 16px; padding-inline-end: 76px; overflow-x: auto; color: var(--code-ink); font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.65; }
+.code pre .c { color: #8890b5; }
+.code button { position: absolute; top: 8px; inset-inline-end: 8px; font: 600 0.75rem var(--font-body); color: var(--code-ink); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.code button:hover, .code button:focus-visible { background: rgba(255,255,255,0.18); outline: none; }
+.code .tag { position: absolute; bottom: 8px; inset-inline-end: 10px; font: 600 0.68rem var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: #8890b5; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.log { display: grid; gap: 12px; }
+.log-item { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+.log-item time { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.reset { font: 600 0.8rem var(--font-body); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-top: 10px; }
+.reset:hover { color: var(--ink); }
+
+@media (max-width: 880px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  nav.toc { position: static; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .log-item { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+@media (max-width: 520px) {
+  .step { padding: 16px; }
+  .step-head { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">MyRooms · Deploy runbook</div>
+    <h1>Deploying MyRooms</h1>
+    <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
+    <div class="meta">
+      <span class="chip">Current phase: <strong>Phase 0 · Foundations</strong></span>
+      <span class="chip">Updated: <strong>2026-10-29</strong></span>
+      <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
+      <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
+      <span class="chip">Expo SDK: <strong>58</strong></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Steps">
+      <div class="label">Overview</div>
+      <a href="#architecture"><span class="n">·</span>Architecture</a>
+      <a href="#phases"><span class="n">·</span>Phase status</a>
+      <a href="#before"><span class="n">·</span>Before you start</a>
+      <div class="label">Backend on the VPS</div>
+      <a href="#s1" data-step="s1"><span class="n">01</span>DNS and firewall</a>
+      <a href="#s2" data-step="s2"><span class="n">02</span>Install Supabase</a>
+      <a href="#s3" data-step="s3"><span class="n">03</span>Configure Supabase</a>
+      <a href="#s4" data-step="s4"><span class="n">04</span>Caddy</a>
+      <a href="#s5" data-step="s5"><span class="n">05</span>Database migrations</a>
+      <a href="#s6" data-step="s6"><span class="n">06</span>Install PowerSync</a>
+      <div class="label">Apps</div>
+      <a href="#s7" data-step="s7"><span class="n">07</span>Point the app at the VPS</a>
+      <a href="#s8" data-step="s8"><span class="n">08</span>Publish the web app</a>
+      <a href="#s9" data-step="s9"><span class="n">09</span>Windows app</a>
+      <a href="#s10" data-step="s10"><span class="n">10</span>Android and iOS</a>
+      <div class="label">Reference</div>
+      <a href="#config"><span class="n">·</span>Where each value goes</a>
+      <a href="#ops"><span class="n">·</span>Updating and backups</a>
+      <a href="#trouble"><span class="n">·</span>Troubleshooting</a>
+      <a href="#changelog"><span class="n">·</span>Changelog</a>
+      <div class="progress" aria-live="polite">
+        <span id="progress-text">0 of 10 steps done</span>
+        <div class="bar"><span id="progress-bar"></span></div>
+        <button class="reset" id="reset" type="button">Clear my checkmarks</button>
+      </div>
+    </nav>
+
+    <main>
+      <section id="architecture">
+        <div class="section-head">
+          <h2>Architecture</h2>
+          <p>One VPS hosts everything server-side. Caddy is the only public entry point and gets HTTPS certificates automatically. Supabase and PowerSync listen on <code>127.0.0.1</code> only, so they are never exposed directly.</p>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 860 400" role="img" aria-label="Devices connect over HTTPS to Caddy on the VPS, which routes app, api and sync subdomains to the web files, Supabase and PowerSync. PowerSync reads changes from the Supabase Postgres database.">
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker></defs>
+            <rect class="box" x="20" y="20" width="820" height="56" rx="10"/>
+            <text x="430" y="44" text-anchor="middle" font-weight="700" font-size="15">Devices</text>
+            <text x="430" y="64" text-anchor="middle" class="sub">Windows app (Tauri) · Android · iOS · Web browser — each with its own offline SQLite</text>
+            <path class="wire" d="M430,76 L430,112" marker-end="url(#ah)"/>
+            <text x="440" y="99" class="sub">HTTPS 443</text>
+            <rect class="box hl" x="20" y="116" width="820" height="50" rx="10"/>
+            <text x="430" y="146" text-anchor="middle" font-weight="700" font-size="15">Caddy on the VPS host</text>
+            <path class="wire" d="M150,166 L150,212" marker-end="url(#ah)"/>
+            <path class="wire" d="M430,166 L430,212" marker-end="url(#ah)"/>
+            <path class="wire" d="M710,166 L710,212" marker-end="url(#ah)"/>
+            <text x="160" y="194" class="sub">app.&lt;domain&gt;</text>
+            <text x="440" y="194" class="sub">api.&lt;domain&gt;</text>
+            <text x="720" y="194" class="sub">sync.&lt;domain&gt;</text>
+            <rect class="box" x="20" y="216" width="260" height="76" rx="10"/>
+            <text x="150" y="246" text-anchor="middle" font-weight="700" font-size="14">Web app files</text>
+            <text x="150" y="268" text-anchor="middle" class="sub">/var/www/myrooms</text>
+            <rect class="box" x="300" y="216" width="260" height="164" rx="10"/>
+            <text x="430" y="246" text-anchor="middle" font-weight="700" font-size="14">Supabase (Docker)</text>
+            <text x="430" y="268" text-anchor="middle" class="sub">gateway 127.0.0.1:8000</text>
+            <text x="430" y="290" text-anchor="middle" class="sub">Auth · REST API · Studio</text>
+            <rect class="box hl" x="340" y="310" width="180" height="50" rx="8"/>
+            <text x="430" y="332" text-anchor="middle" font-weight="700" font-size="13">Postgres <tspan class="sub">(db)</tspan></text>
+            <text x="430" y="350" text-anchor="middle" class="sub">source of truth</text>
+            <rect class="box" x="580" y="216" width="260" height="164" rx="10"/>
+            <text x="710" y="246" text-anchor="middle" font-weight="700" font-size="14">PowerSync (Docker)</text>
+            <text x="710" y="268" text-anchor="middle" class="sub">service 127.0.0.1:8080</text>
+            <text x="710" y="290" text-anchor="middle" class="sub">+ its own storage Postgres</text>
+            <path class="wire" d="M600,335 L524,335" marker-end="url(#ah)" stroke-dasharray="5 4"/>
+            <text x="640" y="330" class="sub">reads changes</text>
+            <text x="640" y="346" class="sub">(network supabase_default)</text>
+          </svg>
+        </div>
+        <p>Writes from devices go to the Supabase API, which checks permissions in Postgres. PowerSync streams each user's rows back down to their devices. The repo holds everything except secrets: <code>deploy/</code> (server config), <code>supabase/migrations/</code> (database), <code>src-tauri/</code> (Windows) and <code>eas.json</code> (mobile builds).</p>
+      </section>
+
+      <section id="phases">
+        <div class="section-head">
+          <h2>Phase status</h2>
+          <p>What each phase adds to or changes in the deployment. Rows move from <span class="pill plan">Planned</span> to <span class="pill wip">In progress</span> to <span class="pill ok">Done</span> as we go.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Phase</th><th>Status</th><th>Deployment impact</th></tr></thead>
+            <tbody>
+              <tr><td class="ph">0 Foundations</td><td><span class="pill wip">In progress</span></td><td>Whole VPS stack (Supabase, PowerSync, Caddy), web hosting, Windows installer, mobile dev builds, CI. Code is done; the VPS has not been set up yet (steps 1–10).</td></tr>
+              <tr><td class="ph">1 Accounts &amp; roles</td><td><span class="pill plan">Planned</span></td><td>Set <code>ENABLE_ANONYMOUS_USERS=false</code>, configure SMTP for invites and password resets, new migrations and access rules, new sync streams.</td></tr>
+              <tr><td class="ph">2 Stations &amp; pricing</td><td><span class="pill plan">Planned</span></td><td>Migrations + sync streams only.</td></tr>
+              <tr><td class="ph">3 Live floor</td><td><span class="pill plan">Planned</span></td><td>Notification setup per platform (Android/iOS push config, Windows notifications).</td></tr>
+              <tr><td class="ph">4 Checkout</td><td><span class="pill plan">Planned</span></td><td>Server-side bill calculation (database functions or Edge Functions deployed to the Supabase <code>volumes/functions</code> folder).</td></tr>
+              <tr><td class="ph">5 Income dashboard</td><td><span class="pill plan">Planned</span></td><td>Migrations (report views) only.</td></tr>
+              <tr><td class="ph">6 Calendar</td><td><span class="pill plan">Planned</span></td><td>Double-booking constraint migration. First pilot deploy at the client's center.</td></tr>
+              <tr><td class="ph">7 Optional modules</td><td><span class="pill plan">Planned</span></td><td>Migrations + sync streams only.</td></tr>
+              <tr><td class="ph">8 Advanced reports</td><td><span class="pill plan">Planned</span></td><td>Migrations only.</td></tr>
+              <tr><td class="ph">9 Reliability</td><td><span class="pill plan">Planned</span></td><td>Automated backups and a restore drill, Sentry error tracking, monitoring.</td></tr>
+              <tr><td class="ph">10 Release</td><td><span class="pill plan">Planned</span></td><td>Windows code signing + auto-update, Google Play and App Store releases, production domain.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="before">
+        <div class="section-head">
+          <h2>Before you start</h2>
+        </div>
+        <div class="grid2">
+          <div class="step">
+            <h3>On the VPS</h3>
+            <ul>
+              <li>Oracle Cloud VPS, ARM (Ampere) or x86. At least <strong>4 GB RAM</strong> for Supabase (8 GB recommended) plus about 1 GB for PowerSync.</li>
+              <li>Docker Engine with Compose <strong>v2.24+</strong> (<code>docker compose version</code>), git and Caddy, already installed.</li>
+              <li>SSH access as a user that can run <code>docker</code>.</li>
+            </ul>
+          </div>
+          <div class="step">
+            <h3>On your PC</h3>
+            <ul>
+              <li>Node 22 and a clone of the repo with <code>npm install</code> done.</li>
+              <li>For the Windows installer: Rust (stable). Visual Studio Build Tools are recommended (see Troubleshooting).</li>
+              <li>A domain you control, plus a free Expo account for mobile builds.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="s1">
+        <div class="step" data-step="s1">
+          <div class="step-head">
+            <span class="step-num">01</span>
+            <div class="step-title"><h3>DNS and firewall</h3><span class="where">Where: <b>DNS provider + Oracle Cloud console</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s1"> Done</label>
+          </div>
+          <p>Create three <strong>A records</strong> pointing at the VPS public IP:</p>
+          <ul>
+            <li><code>app.example.com</code>: the web app</li>
+            <li><code>api.example.com</code>: the Supabase API and Studio dashboard</li>
+            <li><code>sync.example.com</code>: PowerSync</li>
+          </ul>
+          <p>In Oracle Cloud, open the VPS subnet's <strong>security list</strong> and allow inbound TCP <strong>80</strong> and <strong>443</strong> (Caddy needs both). Do the same in the VPS firewall if one is active. Never open 8000, 8080 or 5432.</p>
+          <div class="check"><span>From your PC, <code>nslookup api.example.com</code> returns the VPS IP for all three names.</span></div>
+        </div>
+      </section>
+
+      <section id="s2">
+        <div class="step" data-step="s2">
+          <div class="step-head">
+            <span class="step-num">02</span>
+            <div class="step-title"><h3>Install Supabase</h3><span class="where">Where: <b>VPS</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s2"> Done</label>
+          </div>
+          <p>The setup script downloads the official self-hosted Supabase files (pinned version) to <code>~/myrooms/supabase</code>, generates all secrets, and keeps Supabase's ports private to the VPS.</p>
+          <div class="code"><pre>git clone &lt;repo-url&gt; ~/myrooms/app
+cd ~/myrooms/app/deploy
+sh supabase/setup.sh</pre><span class="tag">VPS</span></div>
+          <div class="note"><span>Those Supabase files hold the secrets, so they live outside the repo and are never committed.</span></div>
+        </div>
+      </section>
+
+      <section id="s3">
+        <div class="step" data-step="s3">
+          <div class="step-head">
+            <span class="step-num">03</span>
+            <div class="step-title"><h3>Configure and start Supabase</h3><span class="where">Where: <b>VPS</b> · file <code>~/myrooms/supabase/.env</code></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s3"> Done</label>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+              <tbody>
+                <tr><td><code>SUPABASE_PUBLIC_URL</code></td><td><code>https://api.example.com</code></td></tr>
+                <tr><td><code>API_EXTERNAL_URL</code></td><td><code>https://api.example.com/auth/v1</code></td></tr>
+                <tr><td><code>SITE_URL</code></td><td><code>https://app.example.com</code></td></tr>
+                <tr><td><code>DASHBOARD_USERNAME</code>, <code>DASHBOARD_PASSWORD</code></td><td>Studio login (letters and numbers only)</td></tr>
+                <tr><td><code>ENABLE_ANONYMOUS_USERS</code></td><td><code>true</code> during Phase 0 (sync demo). Set to <code>false</code> in Phase 1.</td></tr>
+                <tr><td><code>SMTP_*</code></td><td>Mail server for sign-up and password-reset emails (needed from Phase 1)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="code"><pre>cd ~/myrooms/supabase
+sh run.sh start
+docker compose ps        <span class="c"># every service shows "healthy"</span>
+sh run.sh secrets        <span class="c"># note the publishable key for step 7</span></pre><span class="tag">VPS</span></div>
+          <div class="check"><span><code>docker compose ps</code> lists all services as healthy within a couple of minutes.</span></div>
+        </div>
+      </section>
+
+      <section id="s4">
+        <div class="step" data-step="s4">
+          <div class="step-head">
+            <span class="step-num">04</span>
+            <div class="step-title"><h3>Caddy</h3><span class="where">Where: <b>VPS</b> · blocks in <code>deploy/caddy/Caddyfile.example</code></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s4"> Done</label>
+          </div>
+          <p>Create the web app folder, add the three site blocks to the VPS Caddyfile with your real domains, then reload Caddy.</p>
+          <div class="code"><pre>sudo mkdir -p /var/www/myrooms && sudo chown $USER /var/www/myrooms</pre><span class="tag">VPS</span></div>
+          <div class="code"><pre>app.example.com {
+	root * /var/www/myrooms
+	encode zstd gzip
+	try_files {path} /index.html
+	file_server
+	@hashed path /_expo/static/* /@powersync/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	header /index.html Cache-Control "no-cache"
+}
+
+api.example.com {
+	reverse_proxy localhost:8000
+}
+
+sync.example.com {
+	reverse_proxy localhost:8080 {
+		flush_interval -1
+	}
+}</pre><span class="tag">Caddyfile</span></div>
+          <div class="code"><pre>sudo systemctl reload caddy</pre><span class="tag">VPS</span></div>
+          <div class="note"><span>If Caddy runs in Docker, attach it to the <code>supabase_default</code> and <code>myrooms-powersync_default</code> networks, mount <code>/var/www/myrooms</code>, and proxy to <code>kong:8000</code> and <code>powersync:8080</code> instead.</span></div>
+          <div class="check"><span>Opening <code>https://api.example.com</code> shows a padlock and asks for the Studio login.</span></div>
+        </div>
+      </section>
+
+      <section id="s5">
+        <div class="step" data-step="s5">
+          <div class="step-head">
+            <span class="step-num">05</span>
+            <div class="step-title"><h3>Apply the database migrations</h3><span class="where">Where: <b>your PC</b> (through an SSH tunnel), then <b>VPS</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s5"> Done</label>
+          </div>
+          <p>Migrations in <code>supabase/migrations/</code> are pushed from your PC through an SSH tunnel, so Postgres never needs a public port. <code>POOLER_TENANT_ID</code> and <code>POSTGRES_PASSWORD</code> are in <code>~/myrooms/supabase/.env</code>.</p>
+          <div class="code"><pre><span class="c"># Terminal 1: keep this open</span>
+ssh -N -L 54329:127.0.0.1:5432 &lt;user&gt;@&lt;vps-ip&gt;</pre><span class="tag">PC</span></div>
+          <div class="code"><pre><span class="c"># Terminal 2: from the repo root</span>
+npx supabase db push --db-url "postgresql://postgres.&lt;POOLER_TENANT_ID&gt;:&lt;POSTGRES_PASSWORD&gt;@127.0.0.1:54329/postgres"</pre><span class="tag">PC</span></div>
+          <p>Then give the PowerSync database role a password (once per server) and confirm logical replication is on:</p>
+          <div class="code"><pre>docker exec -it supabase-db psql -U postgres -c "alter role powersync_role with password '&lt;new-random-password&gt;';"
+docker exec -it supabase-db psql -U postgres -c "show wal_level;"   <span class="c"># must print: logical</span></pre><span class="tag">VPS</span></div>
+          <div class="check"><span>In Studio → Table editor, the <code>sync_checks</code> table exists.</span></div>
+        </div>
+      </section>
+
+      <section id="s6">
+        <div class="step" data-step="s6">
+          <div class="step-head">
+            <span class="step-num">06</span>
+            <div class="step-title"><h3>Install PowerSync</h3><span class="where">Where: <b>VPS</b> · folder <code>deploy/powersync</code></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s6"> Done</label>
+          </div>
+          <p>Fill in <code>.env</code>: the <code>powersync_role</code> password from step 5, plus a storage password and an admin token (generate each with <code>openssl rand -hex 32</code>).</p>
+          <div class="code"><pre>cd ~/myrooms/app/deploy/powersync
+cp .env.example .env && nano .env
+docker compose up -d
+docker compose logs -f powersync   <span class="c"># replication starts, no errors</span></pre><span class="tag">VPS</span></div>
+          <div class="check"><span><code>curl https://sync.example.com/probes/liveness</code> answers successfully.</span></div>
+        </div>
+      </section>
+
+      <section id="s7">
+        <div class="step" data-step="s7">
+          <div class="step-head">
+            <span class="step-num">07</span>
+            <div class="step-title"><h3>Point the app at the VPS</h3><span class="where">Where: <b>your PC</b> · file <code>.env.local</code> in the repo root</span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s7"> Done</label>
+          </div>
+          <div class="code"><pre>EXPO_PUBLIC_SUPABASE_URL=https://api.example.com
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=&lt;from "sh run.sh secrets"&gt;
+EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com</pre><span class="tag">.env.local</span></div>
+          <p>Run <code>npm run web</code>. These values are built into the app, so any change needs a rebuild.</p>
+          <div class="check"><span>The "Offline sync check" card shows <strong>Online</strong>. Add a record, switch Wi-Fi off, add more, switch it back on: "Waiting to upload" drops to 0 and the rows appear in Studio.</span></div>
+        </div>
+      </section>
+
+      <section id="s8">
+        <div class="step" data-step="s8">
+          <div class="step-head">
+            <span class="step-num">08</span>
+            <div class="step-title"><h3>Publish the web app</h3><span class="where">Where: <b>your PC</b> → <b>VPS</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s8"> Done</label>
+          </div>
+          <div class="code"><pre>npm run build:web                                         <span class="c"># → dist/</span>
+rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><span class="tag">PC</span></div>
+          <div class="note"><span>No rsync on Windows? Use <code>scp -r dist/* &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</code>, or run the rsync from WSL.</span></div>
+          <div class="check"><span><code>https://app.example.com</code> loads and the sync card shows <strong>Online</strong>.</span></div>
+        </div>
+      </section>
+
+      <section id="s9">
+        <div class="step" data-step="s9">
+          <div class="step-head">
+            <span class="step-num">09</span>
+            <div class="step-title"><h3>Build the Windows app</h3><span class="where">Where: <b>your PC</b> or <b>GitHub Actions</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s9"> Done</label>
+          </div>
+          <p><strong>Locally</strong> (uses <code>.env.local</code>):</p>
+          <div class="code"><pre>npm run desktop:build
+<span class="c"># installer: src-tauri/target/release/bundle/nsis/MyRooms_&lt;version&gt;_x64-setup.exe</span></pre><span class="tag">PC</span></div>
+          <p><strong>From GitHub:</strong> add the three <code>EXPO_PUBLIC_*</code> values as repository <strong>Variables</strong> (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to <code>dev</code> and <code>main</code>, or by hand, and uploads the installer as a build artifact.</p>
+          <div class="note"><span>The installer isn't code-signed until Phase 10, so Windows SmartScreen shows a warning ("More info" → "Run anyway").</span></div>
+          <div class="check"><span>The installed app opens and its sync card shows <strong>Online</strong>.</span></div>
+        </div>
+      </section>
+
+      <section id="s10">
+        <div class="step" data-step="s10">
+          <div class="step-head">
+            <span class="step-num">10</span>
+            <div class="step-title"><h3>Build the Android and iOS apps</h3><span class="where">Where: <b>your PC</b> → <b>EAS cloud builds</b></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s10"> Done</label>
+          </div>
+          <p>Phone builds run on EAS (Expo's build service). The offline database uses native code, so the app needs these builds and won't open in Expo Go.</p>
+          <div class="code"><pre>npx eas-cli login
+npx eas-cli init                <span class="c"># links the project, once</span>
+
+<span class="c"># Backend URLs for cloud builds (once per environment: development, preview, production)</span>
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value https://api.example.com --visibility plaintext
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value &lt;key&gt; --visibility plaintext
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_URL --value https://sync.example.com --visibility plaintext
+
+npx eas-cli build --profile development --platform android   <span class="c"># installable APK</span>
+npx eas-cli build --profile development --platform ios       <span class="c"># needs an Apple Developer account</span></pre><span class="tag">PC</span></div>
+          <div class="check"><span>The build installs on a phone, opens, and its sync card shows <strong>Online</strong>. Records from the web app show up on the phone.</span></div>
+        </div>
+      </section>
+
+      <section id="config">
+        <div class="section-head">
+          <h2>Where each value goes</h2>
+          <p>Values marked <span class="pill wip">Secret</span> never go into git or into the app.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Value</th><th>Lives in</th><th>Used by</th></tr></thead>
+            <tbody>
+              <tr><td>Supabase URL, publishable key, PowerSync URL</td><td><code>.env.local</code> (PC) · GitHub Variables · EAS env</td><td>App builds (web, Windows, mobile)</td></tr>
+              <tr><td>Postgres password, secret key, JWT keys, dashboard login <span class="pill wip">Secret</span></td><td><code>~/myrooms/supabase/.env</code> (VPS)</td><td>Supabase</td></tr>
+              <tr><td><code>powersync_role</code> password, storage password, admin token <span class="pill wip">Secret</span></td><td><code>~/myrooms/app/deploy/powersync/.env</code> (VPS)</td><td>PowerSync</td></tr>
+              <tr><td>What each device downloads</td><td><code>deploy/powersync/sync-config.yaml</code> (git)</td><td>PowerSync</td></tr>
+              <tr><td>Database tables and access rules</td><td><code>supabase/migrations/*.sql</code> (git)</td><td>Postgres, via <code>supabase db push</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ops">
+        <div class="section-head">
+          <h2>Updating and backups</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>When this changes</th><th>Do this</th></tr></thead>
+            <tbody>
+              <tr><td>New SQL migration</td><td>Repeat step 5 (<code>supabase db push</code> through the tunnel)</td></tr>
+              <tr><td>Sync rules</td><td>On the VPS: <code>cd ~/myrooms/app &amp;&amp; git pull</code>, then <code>docker compose restart powersync</code> in <code>deploy/powersync</code></td></tr>
+              <tr><td>App code (web)</td><td>Repeat step 8</td></tr>
+              <tr><td>App code (Windows / mobile)</td><td>Rebuild (steps 9 and 10) and reinstall</td></tr>
+              <tr><td>Supabase version</td><td>Follow the official upgrade notes, using <code>sh run.sh</code> / <code>update.sh</code> in <code>~/myrooms/supabase</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Database files live in <code>~/myrooms/supabase/volumes/db/data</code>. Until automated backups arrive in Phase 9, run a nightly dump (for example from cron):</p>
+        <div class="code"><pre>mkdir -p ~/backups
+docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-$(date +%F).dump</pre><span class="tag">VPS</span></div>
+      </section>
+
+      <section id="trouble">
+        <div class="section-head">
+          <h2>Troubleshooting</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+            <tbody>
+              <tr><td>Windows build fails with <code>windres: preprocessing failed</code></td><td>The Rust GNU toolchain can't handle a space in the project path. Install Visual Studio Build Tools and run <code>rustup default stable-msvc</code>, or build with <code>CARGO_TARGET_DIR</code> set to the folder's short path: <code>export CARGO_TARGET_DIR="$(cygpath -d "$PWD/src-tauri")\\target"</code> (Git Bash).</td></tr>
+              <tr><td>PowerSync log: <code>PSYNC_S2105</code> missing claim <code>aud</code></td><td><code>service.yaml</code> must keep <code>audience: ['authenticated']</code>.</td></tr>
+              <tr><td>PowerSync log: <code>PSYNC_S2101</code> no matching key</td><td>Check <code>PS_SUPABASE_JWKS_URI</code> in <code>.env</code>, and that <code>sh utils/add-new-auth-keys.sh</code> ran during setup. Then sign out and back in on the device.</td></tr>
+              <tr><td>PowerSync can't reach <code>db</code></td><td>Run <code>docker network ls</code> and set <code>SUPABASE_DOCKER_NETWORK</code> in <code>deploy/powersync/.env</code> to Supabase's network name.</td></tr>
+              <tr><td>App always shows Offline</td><td>Check all three <code>EXPO_PUBLIC_*</code> values were set <em>before</em> the build, and that <code>ENABLE_ANONYMOUS_USERS=true</code> (Phase 0 only).</td></tr>
+              <tr><td>Caddy has no certificate</td><td>DNS isn't pointing at the VPS yet, or ports 80/443 are closed in the Oracle security list.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="changelog">
+        <div class="section-head">
+          <h2>Changelog</h2>
+          <p>One entry each time a phase changes how MyRooms is deployed.</p>
+        </div>
+        <div class="log">
+          <div class="log-item"><time datetime="2026-10-29">2026-10-29</time><div><strong>Phase 0.</strong> First version: self-hosted Supabase v0.8.3 and PowerSync 1.27.2 on the Oracle VPS behind Caddy, web app hosted by Caddy, Windows installer via Tauri (local or GitHub Actions), Android and iOS development builds via EAS, CI for lint, typecheck, tests and database tests.</div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  // Copy buttons on every code block.
+  document.querySelectorAll('.code').forEach(function (block) {
+    var pre = block.querySelector('pre');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy command');
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange(); range.selectNodeContents(pre);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = 'Press Ctrl+C';
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } catch (e) { fallback(); }
+    });
+    block.appendChild(btn);
+  });
+
+  // Per-viewer "Done" checkmarks (this browser only).
+  var KEY = 'myrooms-deploy-done';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step[data-step]'));
+  function render() {
+    var count = 0;
+    steps.forEach(function (step) {
+      var id = step.getAttribute('data-step');
+      var on = !!state[id];
+      if (on) count++;
+      step.classList.toggle('is-done', on);
+      var box = document.getElementById('done-' + id);
+      if (box) box.checked = on;
+      var link = document.querySelector('nav.toc a[data-step="' + id + '"]');
+      if (link) link.classList.toggle('done', on);
+    });
+    document.getElementById('progress-text').textContent = count + ' of ' + steps.length + ' steps done';
+    document.getElementById('progress-bar').style.width = (count / steps.length * 100) + '%';
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  steps.forEach(function (step) {
+    var id = step.getAttribute('data-step');
+    var box = document.getElementById('done-' + id);
+    if (box) box.addEventListener('change', function () { state[id] = box.checked; save(); render(); });
+  });
+  document.getElementById('reset').addEventListener('click', function () { state = {}; save(); render(); });
+  render();
+})();
+</script>

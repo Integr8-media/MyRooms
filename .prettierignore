@@ -7,3 +7,4 @@ src-tauri/gen
 supabase/.temp
 package-lock.json
 .env.example
+docs/deploy-guide.html

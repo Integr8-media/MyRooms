@@ -1,11 +1,13 @@
-# Deploying the backend on the VPS
+# Deploying MyRooms
 
-The backend runs on our own VPS (Oracle Cloud) with Docker, behind the Caddy that already runs there:
+The backend and the web app run on our own VPS (Oracle Cloud) with Docker, behind the Caddy that already runs there. The Windows, Android and iOS apps are built separately and connect to the same backend.
+
+The same guide is published as a page (kept in sync with this file): see `CLAUDE.md` for the link.
 
 ```
                  Internet (HTTPS)
                         │
-                 Caddy (on the VPS host)
+                 Caddy (on the VPS host) ── app.<domain> → /var/www/myrooms (web app files)
           ┌─────────────┴──────────────┐
  api.<domain> → 127.0.0.1:8000    sync.<domain> → 127.0.0.1:8080
           │                            │
@@ -22,8 +24,9 @@ The backend runs on our own VPS (Oracle Cloud) with Docker, behind the Caddy tha
 
 ## 1. DNS
 
-Create two A records pointing at the VPS public IP, for example:
+Create three A records pointing at the VPS public IP, for example:
 
+- `app.example.com`: the web app
 - `api.example.com`: Supabase API and the Studio dashboard
 - `sync.example.com`: PowerSync
 
@@ -62,7 +65,7 @@ sh run.sh secrets                 # shows the publishable key for the app's .env
 
 ## 4. Caddy
 
-Add the two blocks from `caddy/Caddyfile.example` (with your domains) to the VPS Caddyfile and reload Caddy (`sudo systemctl reload caddy`, or `docker exec <caddy> caddy reload --config /etc/caddy/Caddyfile` if Caddy runs in Docker; see the note at the bottom of the example).
+Create the web app folder (`sudo mkdir -p /var/www/myrooms && sudo chown $USER /var/www/myrooms`), then add the three blocks from `caddy/Caddyfile.example` (with your domains) to the VPS Caddyfile and reload Caddy (`sudo systemctl reload caddy`, or `docker exec <caddy> caddy reload --config /etc/caddy/Caddyfile` if Caddy runs in Docker; see the note at the bottom of the example).
 
 Check: `https://api.example.com` should ask for the Studio login.
 
@@ -110,10 +113,45 @@ EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com
 
 Restart the app. The "Offline sync check" card should show **Online**. Add a record, then turn Wi-Fi off, add more, and turn it back on: the "Waiting to upload" count should drop to 0, and the records should appear in Studio → Table editor → `sync_checks`.
 
+## 8. Publish the web app
+
+Build on a PC with `.env.local` pointing at the VPS (step 7), then copy the files up:
+
+```sh
+npm run build:web                                  # → dist/
+rsync -az --delete dist/ <user>@<vps-ip>:/var/www/myrooms/
+```
+
+Check: `https://app.example.com` loads, and the sync card shows **Online**.
+
+## 9. Build the Windows app
+
+- **Locally:** `npm run desktop:build` (uses `.env.local`). The installer is in `src-tauri/target/release/bundle/nsis/`. If the build fails with `windres`, see Troubleshooting in the main README.
+- **From GitHub:** set the three `EXPO_PUBLIC_*` values as repository **Variables** (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to `dev` and `main` (or by hand) and uploads the installer as a build artifact.
+- The installer is not code-signed yet (Phase 10), so Windows SmartScreen will warn on install.
+
+## 10. Build the Android and iOS apps
+
+Uses EAS (Expo's build service, needs a free Expo account):
+
+```sh
+npx eas-cli login
+npx eas-cli init                                   # links the project once
+# Backend URLs for cloud builds (once per environment):
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value https://api.example.com --visibility plaintext
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key> --visibility plaintext
+npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_URL --value https://sync.example.com --visibility plaintext
+npx eas-cli build --profile development --platform android   # installable test build (APK)
+npx eas-cli build --profile development --platform ios       # needs an Apple Developer account
+```
+
+Store releases (Google Play, App Store) come in Phase 10.
+
 ## Updating
 
 - **Sync rules** (`powersync/sync-config.yaml`): `git pull`, then `docker compose restart powersync`.
 - **New migrations**: repeat step 5 (`supabase db push`).
+- **Web app**: repeat step 8.
 - **Supabase version**: follow the official upgrade notes, using `sh run.sh` and `update.sh` in `~/myrooms/supabase`.
 
 ## Backups

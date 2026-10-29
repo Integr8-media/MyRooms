@@ -9,6 +9,12 @@ on:
 jobs:
   tauri-windows:
     runs-on: windows-latest
+    # Backend URLs are baked into the app at build time.
+    # Set them under GitHub → Settings → Secrets and variables → Actions → Variables.
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_POWERSYNC_URL: ${{ vars.EXPO_PUBLIC_POWERSYNC_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
