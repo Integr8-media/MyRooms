@@ -40,6 +40,26 @@ export function SettingsScreen() {
             testID="settings-branches"
           />
         ) : null}
+        {can('stations.edit') ? (
+          <ListRow
+            title={t('stations.title')}
+            subtitle={t('settings.stationsHint')}
+            onPress={() => router.push('/settings/stations')}
+            testID="settings-stations"
+          />
+        ) : null}
+        <ListRow
+          title={t('stationTypes.title')}
+          subtitle={t('settings.stationTypesHint')}
+          onPress={() => router.push('/settings/station-types')}
+          testID="settings-station-types"
+        />
+        <ListRow
+          title={t('pricing.previewTitle')}
+          subtitle={t('settings.pricePreviewHint')}
+          onPress={() => router.push('/settings/price-preview')}
+          testID="settings-price-preview"
+        />
         {can('staff.view') ? (
           <ListRow
             title={t('staff.title')}

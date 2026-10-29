@@ -27,6 +27,16 @@ export function parsePounds(input: string): Piasters {
   return negative ? -piasters : piasters;
 }
 
+/** Piasters as an editable pounds string: 6000 -> "60", 6250 -> "62.50". */
+export function toPoundsInput(amount: Piasters): string {
+  assertPiasters(amount);
+  const sign = amount < 0 ? '-' : '';
+  const abs = Math.abs(amount);
+  const whole = Math.floor(abs / PIASTERS_PER_POUND);
+  const fraction = abs % PIASTERS_PER_POUND;
+  return `${sign}${whole}${fraction ? '.' + String(fraction).padStart(2, '0') : ''}`;
+}
+
 /** Charge for `minutes` at an hourly rate, rounded to the nearest piaster. */
 export function chargeForMinutes(minutes: number, pricePerHour: Piasters): Piasters {
   assertPiasters(pricePerHour);

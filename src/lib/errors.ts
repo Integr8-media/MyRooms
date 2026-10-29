@@ -16,6 +16,7 @@ export const ERROR_KEYS = [
   'email_not_confirmed',
   'last_owner',
   'invalid_timezone',
+  'invalid_station_type',
   // Supabase Auth error codes.
   'invalid_credentials',
   'email_exists',

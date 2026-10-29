@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 1 code done** (branch `feature/phase-1-accounts`), waiting for the VPS to test end to end (Phase 0's VPS deploy is also pending). Last updated: 2026-10-30.
+> Status: **Phase 2 code done** (branch `feature/phase-2-stations-pricing`), waiting for the VPS to test end to end, like Phases 0 and 1. Last updated: 2026-10-30.
 
 ## 1. Product summary
 

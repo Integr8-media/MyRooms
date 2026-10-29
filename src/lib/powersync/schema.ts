@@ -3,7 +3,7 @@ import { column, Schema, Table } from '@powersync/common';
 /**
  * Local SQLite schema mirrored from Postgres (supabase/migrations). PowerSync adds `id`.
  * Types on the device: uuid/enum/timestamptz -> text (ISO), boolean -> integer (0/1),
- * jsonb and arrays -> JSON text. Money columns will be integers (piasters).
+ * jsonb and arrays -> JSON text. Money columns are integers (piasters).
  *
  * Writes: never set created_at/updated_at in an UPDATE (the server owns them and clients
  * have no privilege on those columns, so the change would be rejected).
@@ -72,12 +72,82 @@ const invitations = new Table(
   { indexes: { org: ['org_id'] } },
 );
 
+const station_types = new Table(
+  {
+    org_id: column.text,
+    kind: column.text,
+    name: column.text,
+    color: column.text,
+    max_players: column.integer,
+    sort_order: column.integer,
+    is_active: column.integer,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { org: ['org_id'] } },
+);
+
+const stations = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    station_type_id: column.text,
+    name: column.text,
+    status: column.text,
+    notes: column.text,
+    sort_order: column.integer,
+    is_active: column.integer,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { branch: ['branch_id'], type: ['station_type_id'] } },
+);
+
+/** Prices are integer piasters. Times: minutes after local midnight. Dates: "YYYY-MM-DD". */
+const rate_rules = new Table(
+  {
+    org_id: column.text,
+    station_type_id: column.text,
+    name: column.text,
+    price_per_hour: column.integer,
+    players_min: column.integer,
+    players_max: column.integer,
+    days_of_week: column.integer,
+    from_minute: column.integer,
+    to_minute: column.integer,
+    priority: column.integer,
+    valid_from: column.text,
+    valid_to: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { type: ['station_type_id'] } },
+);
+
+const packages = new Table(
+  {
+    org_id: column.text,
+    station_type_id: column.text,
+    name: column.text,
+    minutes: column.integer,
+    price: column.integer,
+    is_active: column.integer,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { type: ['station_type_id'] } },
+);
+
 export const AppSchema = new Schema({
   organizations,
   branches,
   memberships,
   member_branches,
   invitations,
+  station_types,
+  stations,
+  rate_rules,
+  packages,
 });
 
 export type Database = (typeof AppSchema)['types'];
@@ -87,3 +157,7 @@ export type BranchRow = Row<Database['branches']>;
 export type MembershipRow = Row<Database['memberships']>;
 export type MemberBranchRow = Row<Database['member_branches']>;
 export type InvitationRow = Row<Database['invitations']>;
+export type StationTypeRow = Row<Database['station_types']>;
+export type StationRow = Row<Database['stations']>;
+export type RateRuleRow = Row<Database['rate_rules']>;
+export type PackageRow = Row<Database['packages']>;

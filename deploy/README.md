@@ -122,6 +122,8 @@ Restart the app, then check the whole flow:
 2. **Create organization** (name + first branch). The home screen shows the branch, and the **Sync** card shows **Online**.
 3. Offline test: turn Wi-Fi off, go to Settings → Branches → **Add branch**. "Waiting to upload" becomes 1. Turn Wi-Fi on: it drops to 0, and the branch appears in Studio → Table editor → `branches`.
 4. Settings → Staff → **Invite** a second email as Cashier for one branch. Sign in with that email on another device or browser: the invitation shows on the welcome screen; **Join** it. The cashier sees only that branch and no Staff or Branches settings.
+5. As the owner: Settings → **Station types & prices** → add a type (e.g. PS5 Room, 4 players), a base price, a peak price (18:00–24:00, priority 10) and a 3-hour package. Then Settings → **Stations** → add 3 stations at once and put one in maintenance. The cashier sees the stations and the prices (read-only) and can't add stations.
+6. Settings → **Price preview**: 17:00 to 19:30 should cost 1 hour at the base price plus 1.5 hours at the peak price.
 
 ## 7b. Invitation emails (Edge Function)
 

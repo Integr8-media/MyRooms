@@ -146,7 +146,7 @@ html { scroll-behavior: smooth; }
     <h1>Deploying MyRooms</h1>
     <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
     <div class="meta">
-      <span class="chip">Current phase: <strong>Phase 1 · Accounts &amp; roles</strong></span>
+      <span class="chip">Current phase: <strong>Phase 2 · Stations &amp; pricing</strong></span>
       <span class="chip">Updated: <strong>2026-10-30</strong></span>
       <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
       <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
@@ -240,7 +240,7 @@ html { scroll-behavior: smooth; }
             <tbody>
               <tr><td class="ph">0 Foundations</td><td><span class="pill wip">In progress</span></td><td>Whole VPS stack (Supabase, PowerSync, Caddy), web hosting, Windows installer, mobile dev builds, CI. Code is done; the VPS has not been set up yet (steps 1–10).</td></tr>
               <tr><td class="ph">1 Accounts &amp; roles</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. Auth settings in step 3 (anonymous sign-in off, email confirmation on, SMTP required, redirect URLs), new migration (organizations, branches, roles, invitations, access rules), new sync streams, the <code>invite-staff</code> Edge Function (step 7b), and <code>EXPO_PUBLIC_APP_URL</code> for app builds.</td></tr>
-              <tr><td class="ph">2 Stations &amp; pricing</td><td><span class="pill plan">Planned</span></td><td>Migrations + sync streams only.</td></tr>
+              <tr><td class="ph">2 Stations &amp; pricing</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (station types, stations, rate rules, packages, audit log) and new sync streams. No new services or settings: repeat step 5 and restart PowerSync.</td></tr>
               <tr><td class="ph">3 Live floor</td><td><span class="pill plan">Planned</span></td><td>Notification setup per platform (Android/iOS push config, Windows notifications).</td></tr>
               <tr><td class="ph">4 Checkout</td><td><span class="pill plan">Planned</span></td><td>Server-side bill calculation (database functions or Edge Functions deployed to the Supabase <code>volumes/functions</code> folder).</td></tr>
               <tr><td class="ph">5 Income dashboard</td><td><span class="pill plan">Planned</span></td><td>Migrations (report views) only.</td></tr>
@@ -390,7 +390,7 @@ npx supabase db push --db-url "postgresql://postgres.&lt;POOLER_TENANT_ID&gt;:&l
           <p>Then give the PowerSync database role a password (once per server) and confirm logical replication is on:</p>
           <div class="code"><pre>docker exec -it supabase-db psql -U postgres -c "alter role powersync_role with password '&lt;new-random-password&gt;';"
 docker exec -it supabase-db psql -U postgres -c "show wal_level;"   <span class="c"># must print: logical</span></pre><span class="tag">VPS</span></div>
-          <div class="check"><span>In Studio → Table editor, the <code>organizations</code>, <code>branches</code>, <code>memberships</code>, <code>member_branches</code> and <code>invitations</code> tables exist.</span></div>
+          <div class="check"><span>In Studio → Table editor, the <code>organizations</code>, <code>branches</code>, <code>memberships</code>, <code>member_branches</code>, <code>invitations</code>, <code>station_types</code>, <code>stations</code>, <code>rate_rules</code>, <code>packages</code> and <code>audit_log</code> tables exist.</span></div>
         </div>
       </section>
 
@@ -428,8 +428,10 @@ EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</s
             <li><strong>Create organization</strong> (name + first branch). The home screen shows the branch and the <strong>Sync</strong> card shows <strong>Online</strong>.</li>
             <li>Offline test: switch Wi-Fi off, go to Settings → Branches → <strong>Add branch</strong>. "Waiting to upload" becomes 1. Switch Wi-Fi on: it drops to 0 and the branch appears in Studio → <code>branches</code>.</li>
             <li>Settings → Staff → <strong>Invite</strong> a second email as Cashier for one branch. Sign in with that email in another browser: the invitation is on the welcome screen. <strong>Join</strong> it.</li>
+            <li>As the owner: Settings → <strong>Station types &amp; prices</strong> → add a type (e.g. PS5 Room, 4 players), a base price, a peak price (18:00–24:00, priority 10) and a 3-hour package. Then Settings → <strong>Stations</strong> → add 3 stations at once and put one in maintenance.</li>
+            <li>Settings → <strong>Price preview</strong>: 17:00 to 19:30 should cost 1 hour at the base price plus 1.5 hours at the peak price.</li>
           </ol>
-          <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings. The owner sees every branch and all staff.</span></div>
+          <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings, sees the prices read-only, and can't add stations. The owner sees every branch and all staff. The new stations show on the cashier's device.</span></div>
         </div>
       </section>
 
@@ -571,6 +573,7 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
           <p>One entry each time a phase changes how MyRooms is deployed.</p>
         </div>
         <div class="log">
+          <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 2.</strong> New migration: station types, stations (with maintenance), hourly rate rules (days, times, player counts, priority, date range), hour packages, and an audit log of price changes. New sync streams: every member gets their organizations' prices, and staff get the stations of their branches. Step 5's check lists the new tables; step 7 now checks setting up prices and stations and the price preview. No new services or settings.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 1.</strong> Real accounts: anonymous sign-in off, email confirmation required (SMTP now mandatory), redirect URLs for email links. New migration with organizations, branches, roles, invitations and access rules (replaces the Phase 0 <code>sync_checks</code> demo). New sync streams per role. New step 7b: the <code>invite-staff</code> Edge Function. New app variable <code>EXPO_PUBLIC_APP_URL</code>. Step 7 now checks sign-up, organization setup, offline sync and roles.</div></div>
           <div class="log-item"><time datetime="2026-10-29">2026-10-29</time><div><strong>Phase 0.</strong> First version: self-hosted Supabase v0.8.3 and PowerSync 1.27.2 on the Oracle VPS behind Caddy, web app hosted by Caddy, Windows installer via Tauri (local or GitHub Actions), Android and iOS development builds via EAS, CI for lint, typecheck, tests and database tests.</div></div>
         </div>
