@@ -26,16 +26,3 @@ export function getSupabase(): SupabaseClient {
   }
   return client;
 }
-
-/**
- * Phase 0 only: sign in anonymously so the sync demo has a user.
- * Replaced by real email/password auth in Phase 1.
- */
-export async function ensureSession() {
-  const supabase = getSupabase();
-  const { data } = await supabase.auth.getSession();
-  if (data.session) return data.session;
-  const { data: signIn, error } = await supabase.auth.signInAnonymously();
-  if (error) throw error;
-  return signIn.session;
-}

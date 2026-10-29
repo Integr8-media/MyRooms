@@ -4,7 +4,7 @@ Gaming center management app: rent PC desks and PlayStation rooms by the hour, m
 
 Runs on **Windows**, **Android / iOS** and the **Web** from one Expo (React Native + TypeScript) codebase, with a self-hosted Supabase backend on our VPS and offline support (PowerSync).
 
-**Status:** Phase 0 (foundations). See the full plan in [docs/PLAN.md](docs/PLAN.md).
+**Status:** Phase 1 (accounts, branches, roles) code done. See the full plan in [docs/PLAN.md](docs/PLAN.md).
 
 ## Project layout
 
@@ -54,13 +54,13 @@ npm run db:test        # pgTAP tests, needs local Supabase running
 
 The backend runs on our own VPS with Docker behind Caddy: self-hosted **Supabase** (Postgres, Auth, API) plus the **PowerSync** sync service. Full setup: [deploy/README.md](deploy/README.md).
 
-The app works fully offline without a backend: records are stored in local SQLite and queued for upload. To sync, fill in `.env.local` (see `.env.example`) with the VPS URLs and the Supabase publishable key, then restart the app. The "Offline sync check" card should show **Online** and the upload count should drop to 0.
+Signing in needs a backend: fill in `.env.local` (see `.env.example`) with the VPS URLs and the Supabase publishable key, then restart the app. Without it the app shows the sign-in page with a "server is not configured" notice. After the first sign-in on a device, the app works offline: changes are stored in local SQLite and uploaded when the connection returns (see the **Sync** card on the home screen).
 
 - **Schema changes** are SQL migrations in `supabase/migrations/`, applied to the VPS with `supabase db push` over an SSH tunnel (deploy/README.md, step 5).
 - **What each device downloads** is defined in `deploy/powersync/sync-config.yaml`.
-- **Optional local backend** (needs Docker Desktop): `npm run db:start` runs Supabase on your PC, and `npm run db:test` runs the pgTAP access tests. CI runs those tests on every PR.
-
-Phase 0 signs in **anonymously** so the sync demo has a user (`ENABLE_ANONYMOUS_USERS=true` on the VPS). Real authentication replaces this in Phase 1.
+- **Access rules** (owner / manager / cashier) are RLS policies in the Phase 1 migration, tested by `supabase/tests/phase1_access.test.sql`. Owners see every branch; managers and cashiers only the branches they are assigned to.
+- **Invitation emails** are sent by the `invite-staff` Edge Function in `supabase/functions/` (deploy/README.md, step 7b).
+- **Optional local backend** (needs Docker Desktop): `npm run db:start` runs Supabase on your PC, and `npm run db:test` runs the pgTAP access tests. CI runs those tests on every PR. Local Supabase emails (confirmations, resets) appear in Inbucket at http://localhost:54324.
 
 ## Troubleshooting
 

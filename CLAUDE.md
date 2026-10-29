@@ -18,7 +18,9 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
   - Web/Windows: `@powersync/web` (WASM workers copied to `public/@powersync` by `postinstall`).
   - Platform split: `src/lib/powersync/database.ts` vs `database.web.ts`. `metro.config.js` stubs the other platform's SDK.
 - Windows: Tauri v2 in `src-tauri/`, wrapping the web export (`dist/`).
-- Zustand for UI state (persisted with AsyncStorage). Jest (jest-expo) + React Native Testing Library v14 (async `render` and `fireEvent`).
+- Auth: Supabase email/password (email confirmation required). `src/lib/auth/AuthProvider` + `Stack.Protected` route groups in `src/app/_layout.tsx`: `(auth)`, `set-password`, `onboarding`, `(app)`.
+- Zustand for UI state (persisted with AsyncStorage): settings, and the active org/branch (`workspace-store`). `useWorkspace()` gives the current org, role, branches, feature toggles and `can(permission)`.
+- zod for form validation (`src/domain/validation.ts`; messages are i18n keys). Jest (jest-expo) + React Native Testing Library v14 (async `render` and `fireEvent`).
 
 ## Layout
 
@@ -28,7 +30,7 @@ src/features/   feature UI, one folder per feature
 src/domain/     pure business logic (money, pricing…), no React, heavily unit-tested
 src/lib/        infrastructure: config, i18n, settings, supabase, powersync
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl)
-supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), config.toml (local CLI)
+supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions), config.toml (local CLI)
 deploy/         VPS: Supabase setup script + port override, PowerSync compose/config/sync streams, Caddyfile
 src-tauri/      Windows shell
 ```
@@ -40,6 +42,8 @@ src-tauri/      Windows shell
 - **Text:** every user-facing string goes through i18n, with keys added to **both** `en.json` and `ar.json` (a test enforces matching keys). Use the `Text` component from `@/ui`, not RN `Text`.
 - **Dependencies:** add with `npx expo install <pkg>` so versions match SDK 58. For dev deps: `npx expo install -- --save-dev <pkg>`. Run with `CI=1`, or it can hang on a prompt.
 - **Database:** every schema change is a new file in `supabase/migrations/`. Every table gets RLS policies plus pgTAP tests, and must be added to the `powersync` publication and to `deploy/powersync/sync-config.yaml` (Sync Streams, edition 3) if devices need it. The final bill is computed server-side.
+- **Access rules:** build policies from the `private.*` helpers (`is_org_owner`, `can_manage_branch`, `can_access_branch`). Revoke the default grants and grant only the columns clients may write. Keep `src/domain/permissions.ts` (what the UI shows) and the sync streams in step with the SQL rules.
+- **Local writes** go through PowerSync (`powersync.execute`); never set `created_at`/`updated_at` in an UPDATE. Online-only actions (create org, invite, accept) are RPCs. Database functions raise error keys, translated via `src/lib/errors.ts` and `errors.*` in the locales.
 - **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app).
 - **Git:** never commit, push or open PRs unless the user explicitly asks in that session. Work on a feature branch off `dev`.
 

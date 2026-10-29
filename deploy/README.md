@@ -45,14 +45,18 @@ sh supabase/setup.sh              # creates ~/myrooms/supabase with generated se
 
 Edit `~/myrooms/supabase/.env`:
 
-| Variable                                    | Value                                                                 |
-| ------------------------------------------- | --------------------------------------------------------------------- |
-| `SUPABASE_PUBLIC_URL`                       | `https://api.example.com`                                             |
-| `API_EXTERNAL_URL`                          | `https://api.example.com/auth/v1`                                     |
-| `SITE_URL`                                  | URL of the web app (e.g. `https://app.example.com`)                   |
-| `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` | Studio login (letters and numbers only)                               |
-| `ENABLE_ANONYMOUS_USERS`                    | `true` for now (Phase 0 sync demo). Set back to `false` in Phase 1.   |
-| `SMTP_*`                                    | Mail server for sign-up / password reset emails (needed from Phase 1) |
+| Variable                                    | Value                                                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_PUBLIC_URL`                       | `https://api.example.com`                                                                                                    |
+| `API_EXTERNAL_URL`                          | `https://api.example.com/auth/v1`                                                                                            |
+| `SITE_URL`                                  | URL of the web app (e.g. `https://app.example.com`)                                                                          |
+| `ADDITIONAL_REDIRECT_URLS`                  | `https://app.example.com/**,myrooms://**` (where email links may send people back to)                                        |
+| `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` | Studio login (letters and numbers only)                                                                                      |
+| `ENABLE_ANONYMOUS_USERS`                    | `false` (Phase 1 uses real accounts)                                                                                         |
+| `ENABLE_EMAIL_SIGNUP`                       | `true`                                                                                                                       |
+| `ENABLE_EMAIL_AUTOCONFIRM`                  | **`false`**. Accepting a staff invitation trusts the confirmed email, so confirmation must stay on.                          |
+| `SMTP_*`                                    | Mail server for confirmation, password-reset and invitation emails. **Required**: without it nobody can confirm their email. |
+| `MAILER_URLPATHS_*`                         | Leave the defaults (`/auth/v1/verify`).                                                                                      |
 
 Then start it:
 
@@ -109,9 +113,28 @@ In the repo root `.env.local`:
 EXPO_PUBLIC_SUPABASE_URL=https://api.example.com
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<from `sh run.sh secrets`>
 EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com
+EXPO_PUBLIC_APP_URL=https://app.example.com
 ```
 
-Restart the app. The "Offline sync check" card should show **Online**. Add a record, then turn Wi-Fi off, add more, and turn it back on: the "Waiting to upload" count should drop to 0, and the records should appear in Studio → Table editor → `sync_checks`.
+Restart the app, then check the whole flow:
+
+1. **Create account** → open the confirmation email → **Sign in**.
+2. **Create organization** (name + first branch). The home screen shows the branch, and the **Sync** card shows **Online**.
+3. Offline test: turn Wi-Fi off, go to Settings → Branches → **Add branch**. "Waiting to upload" becomes 1. Turn Wi-Fi on: it drops to 0, and the branch appears in Studio → Table editor → `branches`.
+4. Settings → Staff → **Invite** a second email as Cashier for one branch. Sign in with that email on another device or browser: the invitation shows on the welcome screen; **Join** it. The cashier sees only that branch and no Staff or Branches settings.
+
+## 7b. Invitation emails (Edge Function)
+
+The app's **Invite** button calls the `invite-staff` function, which saves the invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).
+
+```sh
+# on the VPS
+mkdir -p ~/myrooms/supabase/volumes/functions/invite-staff
+cp ~/myrooms/app/supabase/functions/invite-staff/index.ts ~/myrooms/supabase/volumes/functions/invite-staff/
+cd ~/myrooms/supabase && docker compose restart functions
+```
+
+Check: `docker compose logs functions` shows no errors after an invite.
 
 ## 8. Publish the web app
 
@@ -122,12 +145,12 @@ npm run build:web                                  # → dist/
 rsync -az --delete dist/ <user>@<vps-ip>:/var/www/myrooms/
 ```
 
-Check: `https://app.example.com` loads, and the sync card shows **Online**.
+Check: `https://app.example.com` loads the sign-in page; after signing in, the Sync card shows **Online**.
 
 ## 9. Build the Windows app
 
-- **Locally:** `npm run desktop:build` (uses `.env.local`). The installer is in `src-tauri/target/release/bundle/nsis/`. If the build fails with `windres`, see Troubleshooting in the main README.
-- **From GitHub:** set the three `EXPO_PUBLIC_*` values as repository **Variables** (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to `dev` and `main` (or by hand) and uploads the installer as a build artifact.
+- **Locally:** `npm run desktop:build` (uses `.env.local`; set `EXPO_PUBLIC_APP_URL` so password-reset emails sent from Windows link to the web app). The installer is in `src-tauri/target/release/bundle/nsis/`. If the build fails with `windres`, see Troubleshooting in the main README.
+- **From GitHub:** set the `EXPO_PUBLIC_*` values (including `EXPO_PUBLIC_APP_URL`) as repository **Variables** (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to `dev` and `main` (or by hand) and uploads the installer as a build artifact.
 - The installer is not code-signed yet (Phase 10), so Windows SmartScreen will warn on install.
 
 ## 10. Build the Android and iOS apps
@@ -150,7 +173,8 @@ Store releases (Google Play, App Store) come in Phase 10.
 ## Updating
 
 - **Sync rules** (`powersync/sync-config.yaml`): `git pull`, then `docker compose restart powersync`.
-- **New migrations**: repeat step 5 (`supabase db push`).
+- **New migrations**: repeat step 5 (`supabase db push`). Then restart PowerSync if the sync config changed.
+- **Edge Functions**: repeat step 7b.
 - **Web app**: repeat step 8.
 - **Supabase version**: follow the official upgrade notes, using `sh run.sh` and `update.sh` in `~/myrooms/supabase`.
 

@@ -146,8 +146,8 @@ html { scroll-behavior: smooth; }
     <h1>Deploying MyRooms</h1>
     <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
     <div class="meta">
-      <span class="chip">Current phase: <strong>Phase 0 · Foundations</strong></span>
-      <span class="chip">Updated: <strong>2026-10-29</strong></span>
+      <span class="chip">Current phase: <strong>Phase 1 · Accounts &amp; roles</strong></span>
+      <span class="chip">Updated: <strong>2026-10-30</strong></span>
       <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
       <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
       <span class="chip">Expo SDK: <strong>58</strong></span>
@@ -169,6 +169,7 @@ html { scroll-behavior: smooth; }
       <a href="#s6" data-step="s6"><span class="n">06</span>Install PowerSync</a>
       <div class="label">Apps</div>
       <a href="#s7" data-step="s7"><span class="n">07</span>Point the app at the VPS</a>
+      <a href="#s7b" data-step="s7b"><span class="n">07b</span>Invitation emails</a>
       <a href="#s8" data-step="s8"><span class="n">08</span>Publish the web app</a>
       <a href="#s9" data-step="s9"><span class="n">09</span>Windows app</a>
       <a href="#s10" data-step="s10"><span class="n">10</span>Android and iOS</a>
@@ -178,7 +179,7 @@ html { scroll-behavior: smooth; }
       <a href="#trouble"><span class="n">·</span>Troubleshooting</a>
       <a href="#changelog"><span class="n">·</span>Changelog</a>
       <div class="progress" aria-live="polite">
-        <span id="progress-text">0 of 10 steps done</span>
+        <span id="progress-text">0 of 11 steps done</span>
         <div class="bar"><span id="progress-bar"></span></div>
         <button class="reset" id="reset" type="button">Clear my checkmarks</button>
       </div>
@@ -238,7 +239,7 @@ html { scroll-behavior: smooth; }
             <thead><tr><th>Phase</th><th>Status</th><th>Deployment impact</th></tr></thead>
             <tbody>
               <tr><td class="ph">0 Foundations</td><td><span class="pill wip">In progress</span></td><td>Whole VPS stack (Supabase, PowerSync, Caddy), web hosting, Windows installer, mobile dev builds, CI. Code is done; the VPS has not been set up yet (steps 1–10).</td></tr>
-              <tr><td class="ph">1 Accounts &amp; roles</td><td><span class="pill plan">Planned</span></td><td>Set <code>ENABLE_ANONYMOUS_USERS=false</code>, configure SMTP for invites and password resets, new migrations and access rules, new sync streams.</td></tr>
+              <tr><td class="ph">1 Accounts &amp; roles</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. Auth settings in step 3 (anonymous sign-in off, email confirmation on, SMTP required, redirect URLs), new migration (organizations, branches, roles, invitations, access rules), new sync streams, the <code>invite-staff</code> Edge Function (step 7b), and <code>EXPO_PUBLIC_APP_URL</code> for app builds.</td></tr>
               <tr><td class="ph">2 Stations &amp; pricing</td><td><span class="pill plan">Planned</span></td><td>Migrations + sync streams only.</td></tr>
               <tr><td class="ph">3 Live floor</td><td><span class="pill plan">Planned</span></td><td>Notification setup per platform (Android/iOS push config, Windows notifications).</td></tr>
               <tr><td class="ph">4 Checkout</td><td><span class="pill plan">Planned</span></td><td>Server-side bill calculation (database functions or Edge Functions deployed to the Supabase <code>volumes/functions</code> folder).</td></tr>
@@ -324,9 +325,11 @@ sh supabase/setup.sh</pre><span class="tag">VPS</span></div>
                 <tr><td><code>SUPABASE_PUBLIC_URL</code></td><td><code>https://api.example.com</code></td></tr>
                 <tr><td><code>API_EXTERNAL_URL</code></td><td><code>https://api.example.com/auth/v1</code></td></tr>
                 <tr><td><code>SITE_URL</code></td><td><code>https://app.example.com</code></td></tr>
+                <tr><td><code>ADDITIONAL_REDIRECT_URLS</code></td><td><code>https://app.example.com/**,myrooms://**</code> (where email links may send people back to)</td></tr>
                 <tr><td><code>DASHBOARD_USERNAME</code>, <code>DASHBOARD_PASSWORD</code></td><td>Studio login (letters and numbers only)</td></tr>
-                <tr><td><code>ENABLE_ANONYMOUS_USERS</code></td><td><code>true</code> during Phase 0 (sync demo). Set to <code>false</code> in Phase 1.</td></tr>
-                <tr><td><code>SMTP_*</code></td><td>Mail server for sign-up and password-reset emails (needed from Phase 1)</td></tr>
+                <tr><td><code>ENABLE_ANONYMOUS_USERS</code></td><td><code>false</code> (real accounts from Phase 1)</td></tr>
+                <tr><td><code>ENABLE_EMAIL_AUTOCONFIRM</code></td><td><strong><code>false</code></strong>. Accepting a staff invitation trusts the confirmed email, so confirmation must stay on.</td></tr>
+                <tr><td><code>SMTP_*</code></td><td>Mail server for confirmation, password-reset and invitation emails. <strong>Required</strong>: without it nobody can confirm their email.</td></tr>
               </tbody>
             </table>
           </div>
@@ -387,7 +390,7 @@ npx supabase db push --db-url "postgresql://postgres.&lt;POOLER_TENANT_ID&gt;:&l
           <p>Then give the PowerSync database role a password (once per server) and confirm logical replication is on:</p>
           <div class="code"><pre>docker exec -it supabase-db psql -U postgres -c "alter role powersync_role with password '&lt;new-random-password&gt;';"
 docker exec -it supabase-db psql -U postgres -c "show wal_level;"   <span class="c"># must print: logical</span></pre><span class="tag">VPS</span></div>
-          <div class="check"><span>In Studio → Table editor, the <code>sync_checks</code> table exists.</span></div>
+          <div class="check"><span>In Studio → Table editor, the <code>organizations</code>, <code>branches</code>, <code>memberships</code>, <code>member_branches</code> and <code>invitations</code> tables exist.</span></div>
         </div>
       </section>
 
@@ -416,9 +419,32 @@ docker compose logs -f powersync   <span class="c"># replication starts, no erro
           </div>
           <div class="code"><pre>EXPO_PUBLIC_SUPABASE_URL=https://api.example.com
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=&lt;from "sh run.sh secrets"&gt;
-EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com</pre><span class="tag">.env.local</span></div>
+EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com
+EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</span></div>
           <p>Run <code>npm run web</code>. These values are built into the app, so any change needs a rebuild.</p>
-          <div class="check"><span>The "Offline sync check" card shows <strong>Online</strong>. Add a record, switch Wi-Fi off, add more, switch it back on: "Waiting to upload" drops to 0 and the rows appear in Studio.</span></div>
+          <p>Then check the whole flow:</p>
+          <ol>
+            <li><strong>Create account</strong>, open the confirmation email, then <strong>Sign in</strong>.</li>
+            <li><strong>Create organization</strong> (name + first branch). The home screen shows the branch and the <strong>Sync</strong> card shows <strong>Online</strong>.</li>
+            <li>Offline test: switch Wi-Fi off, go to Settings → Branches → <strong>Add branch</strong>. "Waiting to upload" becomes 1. Switch Wi-Fi on: it drops to 0 and the branch appears in Studio → <code>branches</code>.</li>
+            <li>Settings → Staff → <strong>Invite</strong> a second email as Cashier for one branch. Sign in with that email in another browser: the invitation is on the welcome screen. <strong>Join</strong> it.</li>
+          </ol>
+          <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings. The owner sees every branch and all staff.</span></div>
+        </div>
+      </section>
+
+      <section id="s7b">
+        <div class="step" data-step="s7b">
+          <div class="step-head">
+            <span class="step-num">07b</span>
+            <div class="step-title"><h3>Invitation emails (Edge Function)</h3><span class="where">Where: <b>VPS</b> · folder <code>supabase/functions/invite-staff</code></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s7b"> Done</label>
+          </div>
+          <p>The app's <strong>Invite</strong> button calls the <code>invite-staff</code> function. It saves the invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).</p>
+          <div class="code"><pre>mkdir -p ~/myrooms/supabase/volumes/functions/invite-staff
+cp ~/myrooms/app/supabase/functions/invite-staff/index.ts ~/myrooms/supabase/volumes/functions/invite-staff/
+cd ~/myrooms/supabase &amp;&amp; docker compose restart functions</pre><span class="tag">VPS</span></div>
+          <div class="check"><span>Invite a new email from Settings → Staff: the app says the invitation was <strong>emailed</strong>, and <code>docker compose logs functions</code> shows no errors.</span></div>
         </div>
       </section>
 
@@ -432,7 +458,7 @@ EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com</pre><span class="tag">.env.l
           <div class="code"><pre>npm run build:web                                         <span class="c"># → dist/</span>
 rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><span class="tag">PC</span></div>
           <div class="note"><span>No rsync on Windows? Use <code>scp -r dist/* &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</code>, or run the rsync from WSL.</span></div>
-          <div class="check"><span><code>https://app.example.com</code> loads and the sync card shows <strong>Online</strong>.</span></div>
+          <div class="check"><span><code>https://app.example.com</code> shows the sign-in page; after signing in, the Sync card shows <strong>Online</strong>.</span></div>
         </div>
       </section>
 
@@ -443,12 +469,12 @@ rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><spa
             <div class="step-title"><h3>Build the Windows app</h3><span class="where">Where: <b>your PC</b> or <b>GitHub Actions</b></span></div>
             <label class="done-toggle"><input type="checkbox" id="done-s9"> Done</label>
           </div>
-          <p><strong>Locally</strong> (uses <code>.env.local</code>):</p>
+          <p><strong>Locally</strong> (uses <code>.env.local</code>; <code>EXPO_PUBLIC_APP_URL</code> makes password-reset emails sent from Windows link to the web app):</p>
           <div class="code"><pre>npm run desktop:build
 <span class="c"># installer: src-tauri/target/release/bundle/nsis/MyRooms_&lt;version&gt;_x64-setup.exe</span></pre><span class="tag">PC</span></div>
-          <p><strong>From GitHub:</strong> add the three <code>EXPO_PUBLIC_*</code> values as repository <strong>Variables</strong> (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to <code>dev</code> and <code>main</code>, or by hand, and uploads the installer as a build artifact.</p>
+          <p><strong>From GitHub:</strong> add the four <code>EXPO_PUBLIC_*</code> values (including <code>EXPO_PUBLIC_APP_URL</code>) as repository <strong>Variables</strong> (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to <code>dev</code> and <code>main</code>, or by hand, and uploads the installer as a build artifact.</p>
           <div class="note"><span>The installer isn't code-signed until Phase 10, so Windows SmartScreen shows a warning ("More info" → "Run anyway").</span></div>
-          <div class="check"><span>The installed app opens and its sync card shows <strong>Online</strong>.</span></div>
+          <div class="check"><span>The installed app opens on the sign-in page; after signing in, its Sync card shows <strong>Online</strong>.</span></div>
         </div>
       </section>
 
@@ -470,7 +496,7 @@ npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_UR
 
 npx eas-cli build --profile development --platform android   <span class="c"># installable APK</span>
 npx eas-cli build --profile development --platform ios       <span class="c"># needs an Apple Developer account</span></pre><span class="tag">PC</span></div>
-          <div class="check"><span>The build installs on a phone, opens, and its sync card shows <strong>Online</strong>. Records from the web app show up on the phone.</span></div>
+          <div class="check"><span>The build installs on a phone and opens on the sign-in page. After signing in, the Sync card shows <strong>Online</strong> and branches created on the web show up on the phone.</span></div>
         </div>
       </section>
 
@@ -483,11 +509,13 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
           <table>
             <thead><tr><th>Value</th><th>Lives in</th><th>Used by</th></tr></thead>
             <tbody>
-              <tr><td>Supabase URL, publishable key, PowerSync URL</td><td><code>.env.local</code> (PC) · GitHub Variables · EAS env</td><td>App builds (web, Windows, mobile)</td></tr>
+              <tr><td>Supabase URL, publishable key, PowerSync URL, web app URL</td><td><code>.env.local</code> (PC) · GitHub Variables · EAS env</td><td>App builds (web, Windows, mobile)</td></tr>
               <tr><td>Postgres password, secret key, JWT keys, dashboard login <span class="pill wip">Secret</span></td><td><code>~/myrooms/supabase/.env</code> (VPS)</td><td>Supabase</td></tr>
               <tr><td><code>powersync_role</code> password, storage password, admin token <span class="pill wip">Secret</span></td><td><code>~/myrooms/app/deploy/powersync/.env</code> (VPS)</td><td>PowerSync</td></tr>
               <tr><td>What each device downloads</td><td><code>deploy/powersync/sync-config.yaml</code> (git)</td><td>PowerSync</td></tr>
               <tr><td>Database tables and access rules</td><td><code>supabase/migrations/*.sql</code> (git)</td><td>Postgres, via <code>supabase db push</code></td></tr>
+              <tr><td>Edge Functions (invitation emails)</td><td><code>supabase/functions/</code> (git), copied to <code>~/myrooms/supabase/volumes/functions</code></td><td>Supabase functions container</td></tr>
+              <tr><td>SMTP login <span class="pill wip">Secret</span></td><td><code>~/myrooms/supabase/.env</code> (VPS)</td><td>Supabase Auth emails</td></tr>
             </tbody>
           </table>
         </div>
@@ -503,6 +531,7 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
             <tbody>
               <tr><td>New SQL migration</td><td>Repeat step 5 (<code>supabase db push</code> through the tunnel)</td></tr>
               <tr><td>Sync rules</td><td>On the VPS: <code>cd ~/myrooms/app &amp;&amp; git pull</code>, then <code>docker compose restart powersync</code> in <code>deploy/powersync</code></td></tr>
+              <tr><td>Edge Function</td><td>Repeat step 7b</td></tr>
               <tr><td>App code (web)</td><td>Repeat step 8</td></tr>
               <tr><td>App code (Windows / mobile)</td><td>Rebuild (steps 9 and 10) and reinstall</td></tr>
               <tr><td>Supabase version</td><td>Follow the official upgrade notes, using <code>sh run.sh</code> / <code>update.sh</code> in <code>~/myrooms/supabase</code></td></tr>
@@ -526,7 +555,10 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
               <tr><td>PowerSync log: <code>PSYNC_S2105</code> missing claim <code>aud</code></td><td><code>service.yaml</code> must keep <code>audience: ['authenticated']</code>.</td></tr>
               <tr><td>PowerSync log: <code>PSYNC_S2101</code> no matching key</td><td>Check <code>PS_SUPABASE_JWKS_URI</code> in <code>.env</code>, and that <code>sh utils/add-new-auth-keys.sh</code> ran during setup. Then sign out and back in on the device.</td></tr>
               <tr><td>PowerSync can't reach <code>db</code></td><td>Run <code>docker network ls</code> and set <code>SUPABASE_DOCKER_NETWORK</code> in <code>deploy/powersync/.env</code> to Supabase's network name.</td></tr>
-              <tr><td>App always shows Offline</td><td>Check all three <code>EXPO_PUBLIC_*</code> values were set <em>before</em> the build, and that <code>ENABLE_ANONYMOUS_USERS=true</code> (Phase 0 only).</td></tr>
+              <tr><td>Sign-in page says "server is not configured"</td><td>The <code>EXPO_PUBLIC_*</code> values were not set <em>before</em> the build. Set them and rebuild.</td></tr>
+              <tr><td>No confirmation or reset emails arrive</td><td>Check the <code>SMTP_*</code> values and <code>docker compose logs auth</code>. Local development: emails appear in Inbucket at <code>http://localhost:54324</code>.</td></tr>
+              <tr><td>Email link opens "link is invalid or has expired"</td><td>Links work once and expire. Also check the app URL is in <code>ADDITIONAL_REDIRECT_URLS</code> (otherwise Supabase sends people to <code>SITE_URL</code>).</td></tr>
+              <tr><td>Signed in, but stuck on "Loading your data…"</td><td>PowerSync isn't reachable or rejects the token: see the <code>PSYNC_*</code> rows above and <code>docker compose logs powersync</code>.</td></tr>
               <tr><td>Caddy has no certificate</td><td>DNS isn't pointing at the VPS yet, or ports 80/443 are closed in the Oracle security list.</td></tr>
             </tbody>
           </table>
@@ -539,6 +571,7 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
           <p>One entry each time a phase changes how MyRooms is deployed.</p>
         </div>
         <div class="log">
+          <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 1.</strong> Real accounts: anonymous sign-in off, email confirmation required (SMTP now mandatory), redirect URLs for email links. New migration with organizations, branches, roles, invitations and access rules (replaces the Phase 0 <code>sync_checks</code> demo). New sync streams per role. New step 7b: the <code>invite-staff</code> Edge Function. New app variable <code>EXPO_PUBLIC_APP_URL</code>. Step 7 now checks sign-up, organization setup, offline sync and roles.</div></div>
           <div class="log-item"><time datetime="2026-10-29">2026-10-29</time><div><strong>Phase 0.</strong> First version: self-hosted Supabase v0.8.3 and PowerSync 1.27.2 on the Oracle VPS behind Caddy, web app hosted by Caddy, Windows installer via Tauri (local or GitHub Actions), Android and iOS development builds via EAS, CI for lint, typecheck, tests and database tests.</div></div>
         </div>
       </section>
