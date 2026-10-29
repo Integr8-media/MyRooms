@@ -7,7 +7,7 @@ Running log of progress, decisions and open items. Update it at the end of every
 | Phase                                   | Status                            | Branch                                        | Notes                                                            |
 | --------------------------------------- | --------------------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
 | 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed) | Web + Windows verified. Android/iOS and online sync not yet run. |
-| 1 Accounts, branches, roles             | Not started                       |                                               |                                                                  |
+| 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)    | 59 pgTAP checks pass on PGlite; signed-in screens need a backend |
 | 2 Stations and pricing                  | Not started                       |                                               |                                                                  |
 | 3 Live floor and walk-ins               | Not started                       |                                               |                                                                  |
 | 4 Checkout and payments                 | Not started                       |                                               |                                                                  |
@@ -17,6 +17,27 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 8 Advanced reports                      | Not started                       |                                               |                                                                  |
 | 9 Offline hardening                     | Not started                       |                                               |                                                                  |
 | 10 Release                              | Not started                       |                                               |                                                                  |
+
+## Phase 1: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261030000000_phase1_accounts.sql`): `organizations` (feature toggles, timezone, currency), `branches`, `memberships` (role enum `app_role`: owner / manager / cashier; email and display name copied from `auth.users` by triggers), `member_branches` (which branches a manager or cashier works in; owners need none), `invitations`. The Phase 0 `sync_checks` table and demo card were removed.
+- **Access helpers** in the `private` schema for every later table: `is_org_owner(org)`, `can_manage_branch(branch)` (owner or assigned manager), `can_access_branch(branch)` (anyone assigned), plus `can_view_membership`, `can_assign_branch`, `confirmed_email`.
+- **RPCs** (online only): `create_organization`, `invite_member`, `my_invitations`, `accept_invitation`. They raise stable error keys (`not_allowed`, `last_owner`, ...) that the app translates (`src/lib/errors.ts`).
+- **Column-level grants** decide what a client may change (owners can't change `currency`, nobody can move a branch to another org). The PowerSync connector now uploads local INSERTs as `ON CONFLICT DO NOTHING` (no UPDATE privilege needed), and UPDATEs send only changed columns. Never set `created_at`/`updated_at` in a local UPDATE.
+- **Sync Streams** (`deploy/powersync/sync-config.yaml`) mirror the RLS rules: own account, own orgs, assigned branches, owner data, a manager's branch staff, sent invitations. Validated with `@powersync/service-sync-rules`.
+- **Edge Function** `supabase/functions/invite-staff`: calls `invite_member` as the caller, then emails people without an account (`auth.admin.inviteUserByEmail`). If the function isn't deployed, the app falls back to the RPC and says no email was sent.
+- **App**: email/password sign in, sign up (with confirmation), forgot/reset password, a "choose a password" screen after reset/invite links (web URL fragment + native deep link `myrooms://set-password`), onboarding (accept invitations or create an org with its first branch), home with branch switcher and sync status, and settings: organization (name, timezone, feature toggles), branches (add/edit/close), staff (list, invite, role, branch assignments, remove), account (name, password, language/theme, sign out with an unsynced-changes warning).
+- The root layout uses `Stack.Protected` with `redirectTo` (exactly one group reachable: `(auth)`, `set-password`, `onboarding`, `(app)`). The router stays unmounted (BootScreen) until auth and the first sync are known.
+- Sign-out runs `powersync.disconnectAndClear()` so the next person on the device sees nothing.
+- `src/domain/permissions.ts` mirrors the SQL rules for the UI; `src/domain/validation.ts` (zod) holds form rules. New UI kit pieces: TextField, SwitchRow, ListRow, Badge, Notice, ScreenHeader, LoadingView.
+
+**Verified:** lint, typecheck, format, 47 Jest tests. The migrations and all 59 pgTAP assertions run on real Postgres via PGlite (with a small Supabase/pgTAP stand-in, see Quirks), and a deliberately weakened policy makes them fail. The sync config validates. Web export tested in a browser: sign-in/sign-up in EN and AR (RTL), validation messages, protected routes redirect to sign-in.
+**Not verified:** anything after sign-in against a real backend (no Docker here, VPS not deployed): onboarding, invitations, staff and branch screens, email links, the Edge Function, and the real pgTAP run in CI / `supabase test db`.
+
+### Phase 1 "done when" still open
+
+- [ ] Run `npm run db:test` (or CI) on real Supabase.
+- [ ] On the VPS: owner, manager and cashier each sign in and see only what they should (deploy guide step 7 checklist).
 
 ## Phase 0: what was built (2026-10-29)
 
@@ -41,17 +62,27 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Branch assignments are a `member_branches` table**, not `memberships.branch_ids[]` as in the first data model draft: simpler RLS and PowerSync streams. Invitations keep `branch_ids uuid[]` (only read by the server).
+- **2026-10-30: No `profiles` table.** Name and email are copied onto `memberships` by triggers (name = `full_name` in the user's metadata), so staff lists work offline.
+- **2026-10-30: Managers** see and edit only their assigned branches, can invite and assign **cashiers** to those branches, and see the staff of those branches. Only owners create branches, change roles, remove members and change org settings. An org always keeps one owner (`last_owner` trigger), and owners can't demote themselves.
+- **2026-10-30: Email confirmation is required** (`ENABLE_EMAIL_AUTOCONFIRM=false`), because `accept_invitation` trusts the confirmed email. This makes SMTP mandatory on the VPS.
+- **2026-10-30: Creating an org, inviting and accepting are online-only RPCs.** Everything else (org settings, branches, roles, assignments, removing members) is written locally and synced, with RLS as the final check (rejected writes are dropped and the server state syncs back).
+- **2026-10-30: zod only** for validation; react-hook-form isn't needed for forms this size.
+- **2026-10-30: Branches are never deleted**, only closed (`is_active = false`), because sessions and payments will reference them.
 - **2026-10-29: Backend is self-hosted Supabase on the user's Oracle VPS** (Docker + the existing Caddy), not hosted supabase.com. The user chose this over a custom Postgres + API stack. Supabase is pinned to `self-hosted/v0.8.3` (Envoy gateway, asymmetric JWT keys, "publishable key" instead of the anon key).
 - **2026-10-29: PowerSync is self-hosted** (`journeyapps/powersync-service:1.27.2`, multi-arch) with its own Postgres for storage. It joins Supabase's Docker network `supabase_default` and connects directly to `db:5432` (replication can't go through the pooler). Auth checks Supabase tokens via JWKS at `http://kong:8000/auth/v1/.well-known/jwks.json`, audience `authenticated`.
 - **2026-10-29: Sync config uses Sync Streams (edition 3)**, not legacy `bucket_definitions`.
 - **2026-10-29: Web app is hosted by Caddy on the VPS** (`/var/www/myrooms`, SPA fallback) rather than Vercel/Cloudflare.
 - **2026-10-29: Routes are in `src/app/`** (current Expo default), not `app/`. PLAN.md was updated.
-- **2026-10-29: Phase 0 signs in anonymously** for the sync demo (`ENABLE_ANONYMOUS_USERS=true`). It must be removed or disabled in Phase 1.
+- **2026-10-29: Phase 0 signed in anonymously** for the sync demo. Replaced by real accounts in Phase 1 (anonymous sign-in is off).
 - **2026-10-29: Domain names and bundle IDs:** `com.integr8media.myrooms` (iOS, Android, Tauri), URL scheme `myrooms`.
 - **2026-10-29: Web export mode is `single`** (SPA), which works for both Caddy and Tauri.
 
 ## Environment quirks (dev PC)
 
+- **Testing SQL without Docker:** run the migrations and pgTAP files in PGlite (`@electric-sql/pglite`) with a stand-in for Supabase (roles `anon`/`authenticated`, `auth.users`, `auth.uid()`/`auth.jwt()`, default grants) and a tiny pgTAP subset (plan/ok/is/is_empty/results_eq/lives_ok/throws_ok). PGlite has no pgTAP extension. The harness lived in the session scratchpad, not the repo.
+- **Validating sync streams:** `@powersync/service-sync-rules` (`SqlSyncRules.validate(yaml, { defaultSchema: 'public' })`); needs `node --js-explicit-resource-management` on Node 22 (or bun).
+- Expo Router `Stack.Protected` without `redirectTo` sends you to the group itself (`/(auth)`, "Unmatched route") when the group has no index. Always pass `redirectTo`.
 - Windows 11; the project path has a space (`C:\Users\Mina Louis\...`).
 - Rust uses the **GNU toolchain** (`x86_64-pc-windows-gnu`), and there's no MSVC Build Tools. `windres` fails on the space in the path. Workaround: `CARGO_TARGET_DIR` set to the 8.3 short path (`C:\Users\MINALO~1\Desktop\INTEGR~1\MyRooms\SRC-TA~1\target`). Long-term fix: install VS Build Tools and run `rustup default stable-msvc`.
 - No Docker and no global Supabase CLI. The `supabase` CLI is a devDependency (`npx supabase`).
@@ -71,6 +102,7 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Next steps
 
-1. User: provide the domain and run deploy steps 1–6 on the VPS (or give access).
-2. Verify online sync on web and Windows, then do the EAS dev builds.
-3. Start Phase 1: real auth (email/password), organizations, branches, memberships, roles, RLS + pgTAP, feature toggles. Turn off anonymous sign-ins and configure SMTP.
+1. User: provide the domain and SMTP details, then run deploy steps 1 to 7b on the VPS (or give access). Set `ENABLE_ANONYMOUS_USERS=false`, `ENABLE_EMAIL_AUTOCONFIRM=false` and `ADDITIONAL_REDIRECT_URLS`.
+2. Run the step 7 checklist with three accounts (owner, manager, cashier) on web, Windows and a phone. This also closes Phase 0's "offline write syncs" item.
+3. Push the branch so CI runs the pgTAP tests on real Supabase.
+4. Phase 2: station types, stations, rate rules, packages, pricing module. Use `private.is_org_owner` for prices and `private.can_manage_branch` for stations.

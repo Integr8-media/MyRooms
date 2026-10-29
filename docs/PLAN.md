@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 0 in progress** (branch `feature/phase-0-foundations`). Last updated: 2026-10-29.
+> Status: **Phase 1 code done** (branch `feature/phase-1-accounts`), waiting for the VPS to test end to end (Phase 0's VPS deploy is also pending). Last updated: 2026-10-30.
 
 ## 1. Product summary
 
@@ -102,7 +102,9 @@ It runs on **Windows (desktop app)**, **Android / iOS**, and the **Web**, sharin
 organizations     id, name, currency='EGP', timezone='Africa/Cairo',
                   feature_customers=true, feature_snacks=true, feature_expenses=true
 branches          id, org_id, name, address, phone, opening_hours (json), is_active
-memberships       id, user_id, org_id, role (owner|manager|cashier), branch_ids[]
+memberships       id, user_id, org_id, role (owner|manager|cashier), email, display_name
+member_branches   id, membership_id, branch_id, org_id, user_id  -- managers/cashiers; owners see all
+invitations       id, org_id, email, role, branch_ids[], invited_by, expires_at, accepted_at
 station_types     id, org_id, kind (pc_desk|ps_room), name, color, max_players
 stations          id, branch_id, station_type_id, name/number,
                   status (active|maintenance), notes, sort_order
