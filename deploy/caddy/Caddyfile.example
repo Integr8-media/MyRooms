@@ -1,0 +1,19 @@
+# Add these blocks to the VPS Caddyfile (Caddy running on the host).
+# Replace the domains; both need DNS A records pointing at the VPS.
+# Caddy gets HTTPS certificates automatically.
+
+# Supabase API gateway (REST, Auth, Storage, Realtime) + Studio dashboard.
+api.example.com {
+	reverse_proxy localhost:8000
+}
+
+# PowerSync sync service (long-lived streaming connections).
+sync.example.com {
+	reverse_proxy localhost:8080 {
+		flush_interval -1
+	}
+}
+
+# If Caddy runs in Docker instead of on the host, attach it to the
+# `supabase_default` and `myrooms-powersync_default` networks and use
+# `reverse_proxy kong:8000` / `reverse_proxy powersync:8080` instead.

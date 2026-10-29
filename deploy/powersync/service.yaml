@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://unpkg.com/@powersync/service-schema@latest/json-schema/powersync-config.json
+# PowerSync Service config. Secrets come from PS_* variables in deploy/powersync/.env.
+
+# Source database: the self-hosted Supabase Postgres, reached over the shared Docker network.
+# Logical replication needs a direct connection (not through the Supavisor pooler).
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_SOURCE_DB_URI
+      sslmode: disable # private Docker network only
+
+# PowerSync's own bookkeeping database (separate container in docker-compose.yml).
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_DB_URI
+  sslmode: disable
+
+port: 8080
+
+sync_config:
+  path: sync-config.yaml
+
+# Verify the app's Supabase login tokens with Supabase Auth's public keys.
+client_auth:
+  jwks_uri: !env PS_SUPABASE_JWKS_URI
+  audience: ['authenticated']
+
+api:
+  tokens:
+    - !env PS_ADMIN_API_TOKEN
+
+telemetry:
+  disable_telemetry_sharing: true

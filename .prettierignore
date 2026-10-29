@@ -1,0 +1,9 @@
+node_modules
+dist
+.expo
+public/@powersync
+src-tauri/target
+src-tauri/gen
+supabase/.temp
+package-lock.json
+.env.example

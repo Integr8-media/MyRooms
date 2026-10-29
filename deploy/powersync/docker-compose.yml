@@ -1,0 +1,49 @@
+# PowerSync Service + its storage database, running next to the self-hosted Supabase stack.
+# Start with: docker compose --env-file .env up -d
+name: myrooms-powersync
+
+services:
+  powersync:
+    image: journeyapps/powersync-service:1.27.2
+    restart: unless-stopped
+    command: ['start', '-r', 'unified']
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      PS_SOURCE_DB_URI: ${PS_SOURCE_DB_URI}
+      PS_STORAGE_DB_URI: postgresql://powersync_storage:${PS_STORAGE_DB_PASSWORD}@powersync-storage:5432/powersync_storage
+      PS_SUPABASE_JWKS_URI: ${PS_SUPABASE_JWKS_URI}
+      PS_ADMIN_API_TOKEN: ${PS_ADMIN_API_TOKEN}
+    volumes:
+      - ./service.yaml:/config/service.yaml:ro
+      - ./sync-config.yaml:/config/sync-config.yaml:ro
+    # Only reachable from the VPS itself; Caddy publishes it over HTTPS.
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      powersync-storage:
+        condition: service_healthy
+    networks: [default, supabase]
+
+  powersync-storage:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: powersync_storage
+      POSTGRES_USER: powersync_storage
+      POSTGRES_PASSWORD: ${PS_STORAGE_DB_PASSWORD}
+    volumes:
+      - powersync-storage:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U powersync_storage -d powersync_storage']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  powersync-storage:
+
+networks:
+  # The Supabase stack's network, so PowerSync can reach its `db` container.
+  supabase:
+    external: true
+    name: ${SUPABASE_DOCKER_NETWORK:-supabase_default}

@@ -1,0 +1,9 @@
+# PowerSync Sync Streams: which rows each signed-in user downloads to their device.
+# Phase 1 replaces this with org/branch-scoped streams that mirror the RLS policies.
+config:
+  edition: 3
+
+streams:
+  my_sync_checks:
+    auto_subscribe: true
+    query: SELECT * FROM sync_checks WHERE user_id = auth.user_id()
