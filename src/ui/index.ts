@@ -8,6 +8,7 @@ export { Notice } from './Notice';
 export { Screen } from './Screen';
 export { ScreenHeader } from './ScreenHeader';
 export { SegmentedControl } from './SegmentedControl';
+export { Stepper } from './Stepper';
 export { SwitchRow } from './SwitchRow';
 export { Text, type TextProps } from './Text';
 export { TextField, type TextFieldProps } from './TextField';

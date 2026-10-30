@@ -9,7 +9,7 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed)      | Web + Windows verified. Android/iOS and online sync not yet run.            |
 | 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)         | 59 pgTAP checks pass on PGlite; signed-in screens need a backend            |
 | 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed) | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
-| 3 Live floor and walk-ins               | Not started                       |                                                    |                                                                             |
+| 3 Live floor and walk-ins               | **Code done, VPS test pending**   | `feature/phase-3-sessions` (not committed)         | 158 pgTAP checks pass on PGlite; 116 Jest tests                             |
 | 4 Checkout and payments                 | Not started                       |                                                    |                                                                             |
 | 5 Income dashboard                      | Not started                       |                                                    |                                                                             |
 | 6 Calendar and reservations (MVP pilot) | Not started                       |                                                    |                                                                             |
@@ -17,6 +17,25 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 8 Advanced reports                      | Not started                       |                                                    |                                                                             |
 | 9 Offline hardening                     | Not started                       |                                                    |                                                                             |
 | 10 Release                              | Not started                       |                                                    |                                                                             |
+
+## Phase 3: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261031000000_phase3_sessions.sql`): `sessions` (kind `open`/`fixed`/`reservation`, status `reserved`/`active`/`completed`/`cancelled`/`no_show`, current `station_id`, `package_id`, `scheduled_start/end`, `actual_start/end`, `note`, `created_by`/`ended_by` set by triggers) and `session_segments` (station, station type copied by trigger, players, `started_at`, `ended_at` null = running). Segments feed `priceSession` directly.
+- **Server rules (triggers):** only walk-ins can be inserted for now (status `active`, not `reservation`); station must be in the branch, active and not removed (`station_unavailable`); one active session per station (unique partial index → 23505 when two devices start the same station offline); package must match the station type; players ≤ type max (`too_many_players`); allowed transitions active→completed/cancelled and reserved→active/cancelled/no_show; closed sessions can't change (`session_closed`); a running session's `actual_end` is forced to null; ending closes the running segment (backstop). Segments: must be on the session's **current** station, inserted open, can't overlap (start clamped to the session start and the last segment's end), closed once only.
+- **Access:** all branch staff read/start/extend/change/move/end; only owners and branch managers cancel (trigger, `not_allowed`); cancellations go to `audit_log`. No deletes. Sync streams: sessions + segments in `assigned_branches` and `owner_data`.
+- **Domain** `src/domain/sessions.ts`: floor status (free / active / ending soon at −5 min / overtime / maintenance), timers, `extendEnd` (adds to the planned end even when over time), `toPricingSegments`, alert schedule (−5 min, end, +15 min; keys include the planned end so extending re-arms), `dueAlerts` for timer-based devices (latest due alert only, 2-minute grace), and `parseTimestamp` (device ISO and Postgres text like `2026-01-05 12:00:00.123456+00`).
+- **App:** the home screen is now the **Live floor** (`src/features/sessions/FloorScreen.tsx`): station cards in a responsive grid with status colors, timer (elapsed for open, remaining/over for fixed), players and running cost, plus a status summary. Routes `sessions/start?stationId=` (open or fixed; quick durations, custom minutes or a package; players; note; live estimate or current rate) and `sessions/[id]` (timer, add time, change players, move to a free station, end/cancel with inline confirmation, estimated bill, history of segments). Writes in `src/features/sessions/api.ts` run in local transactions with the same checks as the server.
+- **Alerts:** `src/lib/notifications/alerts.ts` (phones: expo-notifications scheduled with the OS, reconciled whenever sessions change) and `alerts.web.ts` (web + Windows: checked every 5 s while the app is open; Tauri notification plugin or the Web Notifications API, plus a short Web Audio beep). `useSessionAlerts()` is mounted in `src/app/(app)/_layout.tsx` and covers the current branch. Per-device switch in Settings → Account → Session alerts (`sessionAlerts` in the settings store, default on). Sign-out cancels scheduled alerts.
+- UI kit: `Stepper`; `Screen` has a `wide` option. `BillBreakdown` moved to `src/features/pricing/BillBreakdown.tsx` and is shared by the price preview and the session screen.
+
+**Verified:** lint, format, typecheck, 116 Jest tests (domain timers/status/alerts/timestamps, floor/start/session screen tests), web export and Android JS bundle build, expo-doctor 20/20, `cargo check` of the Tauri shell with the notification plugin. Migrations + 158 pgTAP checks (59 + 41 + 58) pass on PGlite; mutations (cashiers can cancel, no cancel audit, org-wide reads, segments not closed, no player limit, created_by not set) each make tests fail. Sync config validates.
+**Not verified:** anything signed-in in a real browser or device (no backend yet), notifications on a real phone / Windows / browser, Arabic layout of the new screens, the real pgTAP run.
+
+### Phase 3 "done when" still open
+
+- [ ] On the VPS: staff run walk-ins for a full day from web, Windows and a phone, with alerts (deploy guide step 7, items 7–10).
+- [ ] Check the floor, start and session screens in Arabic (RTL) and on a phone-sized screen.
+- [ ] New EAS development builds (expo-notifications is native) and a new Windows installer (notification plugin).
 
 ## Phase 2: what was built (2026-10-30)
 
@@ -78,6 +97,13 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Session times come from the device** (sessions start offline). The server checks they make sense (end ≥ start, segments don't overlap) but not that the clock is right. A cashier can still end a session with an early time; Phase 4 should decide whether to audit or clamp ends far from the upload time.
+- **2026-10-30: Only cancellations are audited in Phase 3**; bills and payments get their audit in Phase 4. Cancel = owners and branch managers.
+- **2026-10-30: A session with a package can only move to a station of the same type** (packages belong to one type). The UI explains it; the server rejects it (`invalid_package`).
+- **2026-10-30: Extending a fixed session adds to the planned end**, not to "now", so overtime already played stays billed.
+- **2026-10-30: Alerts are local notifications only** (no push server). Phones schedule them with the OS; web/Windows need the app open. Each device alerts for the branch it is set to, and can turn alerts off.
+- **2026-10-30: A running session wins over maintenance on the floor** (a station put in maintenance mid-session still shows the session so it can be ended). Maintenance only blocks starting.
+
 - **2026-10-30: Rate rule times are integers** (minutes after local midnight, `to_minute` up to 1440), not Postgres `time`: simpler checks and the same values on the device and the server. A window with end ≤ start runs past midnight and belongs to the day it starts (days mask and valid dates are checked against that day).
 - **2026-10-30: Rule choice:** highest priority wins; on a tie the more specific rule (players, time window, days, dates), then the lowest id, so results never depend on order. The UI suggests priority 0 for the first (base) rule and 10 for later ones.
 - **2026-10-30: Prices are per station per hour** (the whole room, not per player); player-count pricing is done with player ranges on rules.
@@ -103,6 +129,10 @@ Running log of progress, decisions and open items. Update it at the end of every
 - **2026-10-29: Web export mode is `single`** (SPA), which works for both Caddy and Tauri.
 
 ## Environment quirks (dev PC)
+
+- **PGlite harness for Phase 3** is in this session's scratchpad (`45b97e9f-…/scratchpad/pgcheck`, run `node run.mjs <repo>`). Moving it into the repo (`scripts/pgcheck/`) is still worth doing.
+- `eslint-plugin-import` can't see `Notifications.AndroidImportance` (re-exported through a types module); it is disabled for that one line.
+- Jest: variables used inside `jest.mock` factories must be named `mock…`.
 
 - **PGlite harness location:** copied into each session's scratchpad (`pgcheck/run.mjs <repo>`, `stub.sql`, `tap.sql`, `validate-sync.mjs`); the original is in the scratchpad of session `589f6d80-…`. Consider moving it into the repo (e.g. `scripts/pgcheck/`) if it keeps being needed.
 - PowerSync tables are SQLite views: `INSERT … RETURNING` isn't available; get an id with `SELECT uuid() AS id` first.
@@ -133,4 +163,11 @@ Running log of progress, decisions and open items. Update it at the end of every
 2. Run the step 7 checklist with three accounts (owner, manager, cashier) on web, Windows and a phone. This also closes Phase 0's "offline write syncs" item.
 3. Push the branch so CI runs the pgTAP tests on real Supabase.
 4. Ask the client for their real price list (types, hourly prices, peak/weekend rules, packages) and a few real bills, to enter and check in Phase 2's price preview.
-5. Phase 3: live floor and walk-in sessions (`sessions`, `session_segments`). Build segments that feed `priceSession` directly; maintenance stations can't be started.
+5. Run the Phase 3 checks on the VPS (step 7 items 7–10) on web, Windows and a phone; check the new screens in Arabic.
+6. Phase 4: checkout and payments. Server-side final bill from `session_segments` (reuse `src/domain/pricing.ts`); decide on clamping/auditing early ends; an "ended, not paid" list on the floor so cashiers find sessions to check out.
+
+### Open items from Phase 3
+
+- Every session and segment ever recorded syncs to every device of the branch. Fine for now; limit to active + recent sessions (or move history to server-side reports) in Phase 9.
+- When the server rejects an offline session (station already taken), the losing device's session silently disappears after sync. Needs the conflict UI planned for Phases 6/9.
+- An active session can be left with no running segment if a client closes one without opening the next (the app never does this). Phase 4 billing should treat gaps as unbilled and flag them.

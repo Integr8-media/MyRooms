@@ -79,7 +79,14 @@
     "rate_limited": "Too many attempts. Please wait a minute and try again.",
     "network": "No connection to the server. This needs internet.",
     "not_configured": "The server is not configured.",
-    "unknown": "Something went wrong. Please try again."
+    "unknown": "Something went wrong. Please try again.",
+    "invalid_station": "That station isn't in this branch.",
+    "station_unavailable": "This station is out of service or removed, so it can't be used.",
+    "station_busy": "Someone is already playing on this station.",
+    "invalid_session": "That change isn't possible for this session.",
+    "session_closed": "This session has already ended.",
+    "invalid_package": "That package doesn't fit this station type. Packages only work on stations of their own type.",
+    "too_many_players": "Too many players for this station."
   },
   "roles": {
     "owner": "Owner",
@@ -113,12 +120,8 @@
     "waitingForConnection": "Waiting for internet. The first sign-in on a device needs a connection; after that the app works offline."
   },
   "home": {
-    "signedInAs": "Signed in as {{name}}",
-    "currentBranch": "Branch: {{name}}",
     "noBranch": "You're not assigned to any branch yet. Ask your manager or the owner.",
-    "branch": "Branch",
-    "floorTitle": "Live floor",
-    "floorComingSoon": "Stations and sessions will appear here."
+    "branch": "Branch"
   },
   "sync": {
     "title": "Sync",
@@ -310,5 +313,96 @@
     "inUse": "In use",
     "inUseHint": "Turn off to remove it from the floor. Its history is kept.",
     "removed": "Removed"
+  },
+  "floor": {
+    "title": "Live floor",
+    "empty": "No stations in this branch yet. Ask your manager or the owner to add them.",
+    "emptyCanEdit": "No stations in this branch yet. Add them in Settings, Stations.",
+    "status": {
+      "free": "Free",
+      "active": "Playing",
+      "ending_soon": "Ending soon",
+      "overtime": "Over time",
+      "maintenance": "Maintenance"
+    },
+    "elapsed": "Played",
+    "left": "Left",
+    "overBy": "Over by",
+    "players": "Players: {{count}}",
+    "tapToStart": "Tap to start a session",
+    "outOfService": "Out of service"
+  },
+  "sessions": {
+    "title": "Session",
+    "startTitle": "Start session",
+    "startOn": "Start on {{station}}",
+    "stationNotFound": "This station was not found.",
+    "notFound": "This session was not found. It may have been removed when the devices synced.",
+    "openSession": "Open the session",
+    "kind": {
+      "open": "Open",
+      "fixed": "Fixed time"
+    },
+    "kindHint": {
+      "open": "The timer runs until you end it. The customer pays for the time played.",
+      "fixed": "Pick how long. You get an alert 5 minutes before the end, at the end, and if they run over."
+    },
+    "status": {
+      "reserved": "Reserved",
+      "active": "Playing",
+      "completed": "Ended",
+      "cancelled": "Cancelled",
+      "no_show": "No-show"
+    },
+    "fewerPlayers": "Fewer players",
+    "morePlayers": "More players",
+    "duration": "How long",
+    "customDuration": "Other",
+    "minutes": "Minutes",
+    "note": "Customer or note (optional)",
+    "notePlaceholder": "e.g. Ahmed, birthday group",
+    "endsAt": "Ends at {{time}} ({{duration}})",
+    "estimatedPrice": "Estimated price: {{price}}",
+    "rateNow": "Current rate: {{rate}}",
+    "noRateNow": "No price is set for this time. Ask the owner to add a rate rule.",
+    "start": "Start session",
+    "playedFor": "Played {{time}}",
+    "startedAt": "Started {{time}}",
+    "plannedEnd": "ends {{time}}",
+    "endedAt": "ended {{time}}",
+    "withPackage": "Package: {{name}}",
+    "extend": "Add time",
+    "applyPlayers": "Change to {{count}} players",
+    "playersHint": "The new player count is priced from now on.",
+    "move": "Move to another station",
+    "noFreeStations": "No free stations right now.",
+    "packageSameType": "This session has a package: only stations of the same type",
+    "end": "End session",
+    "cancel": "Cancel session",
+    "confirmEnd": "End this session now?",
+    "confirmCancel": "Cancel this session?",
+    "cancelHint": "A cancelled session is not billed. This is recorded with your name.",
+    "endNow": "End now",
+    "cancelNow": "Cancel session",
+    "keepPlaying": "Keep playing",
+    "endedNotice": "Session ended. Payment is taken at checkout.",
+    "cancelledNotice": "This session was cancelled and will not be billed.",
+    "billSoFar": "Bill so far (estimate)",
+    "estimatedBill": "Estimated bill",
+    "history": "Changes during the session",
+    "now": "now",
+    "backToFloor": "Back to the floor"
+  },
+  "alerts": {
+    "ending_soon": "{{station}}: 5 minutes left",
+    "ended": "{{station}}: time is up",
+    "overtime": "{{station}}: 15 minutes over time",
+    "body": "Planned end {{time}}. Open MyRooms to add time or end the session.",
+    "settingsTitle": "Session alerts",
+    "settingsSwitch": "Alerts on this device",
+    "settingsHint": "For fixed-time sessions in the current branch: 5 minutes before the end, at the end, and 15 minutes over. On a computer the app must be open.",
+    "allow": "Allow notifications",
+    "denied": "Notifications are blocked for this app. Allow them in the device or browser settings.",
+    "unsupported": "This browser can't show notifications. Station cards still change color when time runs out."
   }
 }

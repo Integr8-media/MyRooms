@@ -138,6 +138,44 @@ const packages = new Table(
   { indexes: { type: ['station_type_id'] } },
 );
 
+/** Times are ISO timestamps. A segment with no ended_at is still running. */
+const sessions = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    station_id: column.text,
+    kind: column.text,
+    status: column.text,
+    package_id: column.text,
+    scheduled_start: column.text,
+    scheduled_end: column.text,
+    actual_start: column.text,
+    actual_end: column.text,
+    note: column.text,
+    created_by: column.text,
+    ended_by: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { branch_status: ['branch_id', 'status'], station: ['station_id'] } },
+);
+
+const session_segments = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    session_id: column.text,
+    station_id: column.text,
+    station_type_id: column.text,
+    players: column.integer,
+    started_at: column.text,
+    ended_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { session: ['session_id'], branch: ['branch_id'] } },
+);
+
 export const AppSchema = new Schema({
   organizations,
   branches,
@@ -148,6 +186,8 @@ export const AppSchema = new Schema({
   stations,
   rate_rules,
   packages,
+  sessions,
+  session_segments,
 });
 
 export type Database = (typeof AppSchema)['types'];
@@ -161,3 +201,5 @@ export type StationTypeRow = Row<Database['station_types']>;
 export type StationRow = Row<Database['stations']>;
 export type RateRuleRow = Row<Database['rate_rules']>;
 export type PackageRow = Row<Database['packages']>;
+export type SessionRow = Row<Database['sessions']>;
+export type SessionSegmentRow = Row<Database['session_segments']>;
