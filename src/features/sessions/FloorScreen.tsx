@@ -14,6 +14,7 @@ import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import type { SessionSegmentRow } from '@/lib/powersync/schema';
 import { Badge, Button, Card, Notice, Screen, Text } from '@/ui';
 
+import { ModuleLinks } from './ModuleLinks';
 import {
   estimateSession,
   sessionTiming,
@@ -148,6 +149,7 @@ export function FloorScreen() {
         />
       </View>
 
+      <ModuleLinks />
       <BranchSwitcher />
       <RejectedChanges />
 

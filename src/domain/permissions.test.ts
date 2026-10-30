@@ -43,6 +43,26 @@ describe('permissions', () => {
     }
   });
 
+  it('optional modules: everyone sells snacks and adds customers; money rules stay with managers', () => {
+    for (const role of ['owner', 'manager', 'cashier'] as const) {
+      expect(can(role, 'items.sell')).toBe(true);
+      expect(can(role, 'customers.manage')).toBe(true);
+    }
+    for (const permission of [
+      'customers.discount',
+      'items.removeAfterEnd',
+      'stock.manage',
+      'expenses.manage',
+    ] as const) {
+      expect(can('owner', permission)).toBe(true);
+      expect(can('manager', permission)).toBe(true);
+      expect(can('cashier', permission)).toBe(false);
+    }
+    // Product prices are prices: owners only.
+    expect(can('owner', 'products.edit')).toBe(true);
+    expect(can('manager', 'products.edit')).toBe(false);
+  });
+
   it('no role means no permissions', () => {
     expect(can(null, 'staff.view')).toBe(false);
     expect(can(undefined, 'branches.edit')).toBe(false);

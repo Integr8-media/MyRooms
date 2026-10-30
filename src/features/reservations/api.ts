@@ -73,6 +73,8 @@ export type ReservationInput = {
   customerName: string;
   customerPhone?: string | null;
   note?: string | null;
+  /** Customers module: the customer this booking is for. */
+  customerId?: string | null;
 };
 
 /** Book a station for a future time. Returns the new reservation (session) id. */
@@ -82,13 +84,14 @@ export async function createReservation(input: ReservationInput, now = Date.now(
     if (input.players < 1 || input.players > station.max_players) fail('too_many_players');
     if (input.end <= now) fail('invalid_session');
     await checkSlot(tx, input);
+    if (input.customerId) await checkCustomer(tx, input.customerId, input.orgId);
 
     const { id } = await tx.get<{ id: string }>('SELECT uuid() AS id');
     await tx.execute(
       `INSERT INTO sessions (id, org_id, branch_id, station_id, kind, status, package_id,
          scheduled_start, scheduled_end, actual_start, actual_end, note, players, customer_name,
-         customer_phone, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'reservation', 'reserved', NULL, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?)`,
+         customer_phone, customer_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'reservation', 'reserved', NULL, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.orgId,
@@ -100,6 +103,7 @@ export async function createReservation(input: ReservationInput, now = Date.now(
         input.players,
         input.customerName.trim(),
         input.customerPhone?.trim() || null,
+        input.customerId ?? null,
         iso(now),
         iso(now),
       ],
@@ -108,8 +112,17 @@ export async function createReservation(input: ReservationInput, now = Date.now(
   });
 }
 
+async function checkCustomer(tx: Transaction, customerId: string, orgId: string) {
+  const ok = await tx.getOptional('SELECT id FROM customers WHERE id = ? AND org_id = ?', [
+    customerId,
+    orgId,
+  ]);
+  if (!ok) fail('invalid_customer');
+}
+
 type ReservedRow = {
   id: string;
+  customer_id: string | null;
   branch_id: string;
   station_id: string;
   scheduled_start: string | null;
@@ -120,7 +133,7 @@ type ReservedRow = {
 
 async function reservedSession(tx: Transaction, id: string) {
   const row = await tx.getOptional<ReservedRow>(
-    `SELECT id, org_id, branch_id, station_id, scheduled_start, scheduled_end, players
+    `SELECT id, org_id, branch_id, station_id, scheduled_start, scheduled_end, players, customer_id
        FROM sessions WHERE id = ? AND status = 'reserved'`,
     [id],
   );
@@ -139,6 +152,8 @@ export type ReservationChanges = {
   customerName?: string;
   customerPhone?: string | null;
   note?: string | null;
+  /** Customers module: null unlinks the customer. */
+  customerId?: string | null;
 };
 
 /** Move, resize or edit a reservation that hasn't started. Only changed columns are written. */
@@ -166,6 +181,10 @@ export async function updateReservation(id: string, changes: ReservationChanges)
       set.customer_phone = changes.customerPhone?.trim() || null;
     }
     if (changes.note !== undefined) set.note = changes.note?.trim() || null;
+    if (changes.customerId !== undefined && changes.customerId !== current.customer_id) {
+      if (changes.customerId) await checkCustomer(tx, changes.customerId, current.org_id);
+      set.customer_id = changes.customerId;
+    }
     const columns = Object.keys(set);
     if (!columns.length) return;
     await tx.execute(

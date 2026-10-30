@@ -46,6 +46,16 @@ type MockBill = Record<string, unknown> | null;
 let mockBill: MockBill;
 let mockPayments: Record<string, unknown>[];
 let mockRole: 'owner' | 'manager' | 'cashier' = 'cashier';
+let mockItems: Record<string, unknown>[] = [];
+let mockFeatures = { customers: true, snacks: true, expenses: true };
+const cola = {
+  id: 'i1',
+  session_id: 's1',
+  product_id: 'cola',
+  name: 'Cola',
+  quantity: 2,
+  unit_price: 1500,
+};
 
 const baseBill = () => ({
   id: 's1',
@@ -74,9 +84,11 @@ jest.mock('@powersync/react', () => ({
           : []
         : sql.includes('FROM payments p')
           ? mockPayments
-          : sql.includes('FROM stations WHERE id')
-            ? [{ name: 'Room 2' }]
-            : [];
+          : sql.includes('FROM session_items WHERE session_id')
+            ? mockItems
+            : sql.includes('FROM stations WHERE id')
+              ? [{ name: 'Room 2' }]
+              : [];
     return { data, isLoading: false };
   },
 }));
@@ -84,11 +96,13 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
   useWorkspace: () => ({
     org: { id: 'org', name: 'Arena', timezone: 'Africa/Cairo' },
     branch: { id: 'A', name: 'Branch A' },
+    features: mockFeatures,
     role: mockRole,
     can: (p: string) =>
       mockRole !== 'cashier' || !['bills.discount', 'bills.refund', 'bills.void'].includes(p),
   }),
 }));
+jest.mock('@/lib/powersync/database', () => ({ powersync: {} }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: () => true },
   useLocalSearchParams: () => ({ id: 's1' }),
@@ -114,6 +128,8 @@ beforeEach(() => {
   mockBill = baseBill();
   mockPayments = [];
   mockRole = 'cashier';
+  mockItems = [];
+  mockFeatures = { customers: true, snacks: true, expenses: true };
   jest.clearAllMocks();
 });
 
@@ -230,6 +246,29 @@ describe('CheckoutScreen', () => {
     expect(mockCreateBill).toHaveBeenCalledWith('s1');
   });
 
+  it("adds snacks to the bill and labels the customer's default discount", async () => {
+    mockItems = [cola];
+    // 10% of 90 + 30 EGP, as create_bill() does.
+    mockBill = { ...baseBill(), discount_amount: 1200, discount_reason: 'customer:10' };
+    await render(<CheckoutScreen />);
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(money(10_800));
+    expect(screen.getByTestId('amount-due')).toHaveTextContent(money(10_800));
+    expect(screen.getByText('Customer discount (10%)')).toBeTruthy();
+    expect(screen.getAllByText('Cola × 2').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('items-card')).toBeTruthy();
+    // The reason code isn't shown as a manual discount reason.
+    expect(screen.queryByText(/customer:10/)).toBeNull();
+  });
+
+  it('with the snacks module off, items stay on the bill but none can be added', async () => {
+    mockItems = [cola];
+    mockFeatures = { ...mockFeatures, snacks: false };
+    await render(<CheckoutScreen />);
+    expect(screen.getByTestId('checkout-total')).toHaveTextContent(money(12_000));
+    expect(screen.getByText('Cola × 2')).toBeTruthy();
+    expect(screen.queryByTestId('items-card')).toBeNull();
+  });
+
   it('prints or shares the receipt', async () => {
     await render(<CheckoutScreen />);
     await fireEvent.press(screen.getByTestId('receipt'));
@@ -270,6 +309,24 @@ describe('receiptHtml', () => {
     expect(html).toContain(money(8000)); // total
     expect(html).toContain('Paid by Visa');
     expect(html).toContain('>Paid<');
+  });
+
+  it('lists snacks and the customer discount', () => {
+    const html = receiptHtml({
+      ...input('en'),
+      summary: summarizeBill(
+        { ...baseBill(), discount_amount: 1200, discount_reason: 'customer:10' } as never,
+        [],
+        [cola] as never,
+      ),
+      discountReason: 'customer:10',
+      customerName: 'Omar',
+    });
+    expect(html).toContain('Cola × 2');
+    expect(html).toContain(money(3000));
+    expect(html).toContain('Customer discount (10%)');
+    expect(html).toContain(money(10_800));
+    expect(html).toContain('Omar');
   });
 
   it('is right-to-left in Arabic', () => {

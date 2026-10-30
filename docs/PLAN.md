@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 6 code done** (branch `feature/phase-6-calendar-reservations`): timeline calendar (day view with tap-to-book, drag to move/resize; week view on wide screens), reservations with check-in and no-show, no double booking enforced by a database exclusion constraint, "reserved soon" and arrivals on the floor, and a "Not saved" list for changes the server refused. That completes the MVP code (Phases 0–6); waiting for the VPS to test end to end and run the pilot. Last updated: 2026-10-30.
+> Status: **Phase 7 code done** (branch `feature/phase-7-optional-modules`): customers (search by phone, default discount applied to the bill, visit history), snacks & drinks on sessions and bills with per-branch stock (restock, count, low-stock warning), and expenses per branch, each hidden when its toggle is off. MVP code (Phases 0–6) is complete; waiting for the VPS to test end to end and run the pilot. Next: Phase 8 (advanced reports). Last updated: 2026-10-30.
 
 ## 1. Product summary
 
