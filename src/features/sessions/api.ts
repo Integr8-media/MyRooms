@@ -104,6 +104,8 @@ export type StartSessionInput = {
   minutes?: number | null;
   packageId?: string | null;
   note?: string | null;
+  /** Customers module: who is playing (their name and phone are copied onto the session). */
+  customerId?: string | null;
 };
 
 /** Start a walk-in session on a free station. Returns the new session id. */
@@ -122,12 +124,20 @@ export async function startSession(input: StartSessionInput, now = Date.now()): 
       minutes = pkg.minutes;
     }
     if (input.kind === 'fixed' && !minutes) fail('invalid_session');
+    const customer = input.customerId
+      ? await tx.getOptional<{ name: string | null; phone: string | null }>(
+          'SELECT name, phone FROM customers WHERE id = ? AND org_id = ?',
+          [input.customerId, input.orgId],
+        )
+      : null;
+    if (input.customerId && !customer) fail('invalid_customer');
 
     const { id } = await tx.get<{ id: string }>('SELECT uuid() AS id');
     await tx.execute(
       `INSERT INTO sessions (id, org_id, branch_id, station_id, kind, status, package_id,
-         scheduled_start, scheduled_end, actual_start, actual_end, note, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, NULL, ?, ?, ?)`,
+         scheduled_start, scheduled_end, actual_start, actual_end, note, customer_id, customer_name,
+         customer_phone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.orgId,
@@ -139,6 +149,9 @@ export async function startSession(input: StartSessionInput, now = Date.now()): 
         minutes ? iso(plannedEnd(now, minutes)) : null,
         iso(now),
         input.note?.trim() || null,
+        customer ? input.customerId : null,
+        customer?.name ?? null,
+        customer?.phone ?? null,
         iso(now),
         iso(now),
       ],

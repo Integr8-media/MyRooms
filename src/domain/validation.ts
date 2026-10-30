@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { PAYMENT_METHODS } from './billing';
+import { isExpenseCategory, MAX_EXPENSE, type ExpenseCategory } from './expenses';
 import { parsePounds, type Piasters } from './money';
 import { parseClock, parseDateKey } from './zoned-time';
 
@@ -292,6 +294,61 @@ export const reservationSchema = z.object({
   players: z.number().int().min(1, 'outOfRange').max(MAX_PLAYERS, 'outOfRange'),
   customerName: z.string().trim().min(1, 'required').max(80, 'tooLong'),
   customerPhone: optionalText(30),
+  note: optionalText(200),
+});
+
+// ---------------------------------------------------------------------------
+// Optional modules (Phase 7)
+// ---------------------------------------------------------------------------
+
+export const customerSchema = z.object({
+  name: z.string().trim().min(1, 'required').max(80, 'tooLong'),
+  phone: optionalText(30),
+  notes: optionalText(500),
+  /** Default discount in percent (0 = none). */
+  discount: intField(0, 100),
+});
+
+export const productSchema = z.object({
+  name: z.string().trim().min(1, 'required').max(80, 'tooLong'),
+  category: optionalText(40),
+  price: priceField,
+  trackStock: z.boolean(),
+  /** Warn at or below this many (empty = no warning). */
+  lowStockAt: optionalIntField(0, 100_000),
+});
+
+/** Restock: how many were bought. Count: how many there are now (the difference is saved). */
+export const stockSchema = z.object({
+  quantity: intField(0, 100_000),
+  note: optionalText(200),
+});
+
+export const expenseSchema = z.object({
+  category: z
+    .string()
+    .refine(isExpenseCategory, 'required')
+    .transform((c) => c as ExpenseCategory),
+  amount: z
+    .string()
+    .trim()
+    .min(1, 'required')
+    .transform((s, ctx) => {
+      let piasters: number;
+      try {
+        piasters = parsePounds(s);
+      } catch {
+        ctx.addIssue({ code: 'custom', message: 'invalidAmount' });
+        return z.NEVER;
+      }
+      if (piasters <= 0 || piasters > MAX_EXPENSE) {
+        ctx.addIssue({ code: 'custom', message: 'outOfRange' });
+        return z.NEVER;
+      }
+      return piasters;
+    }),
+  method: z.enum(PAYMENT_METHODS),
+  date: dateField,
   note: optionalText(200),
 });
 

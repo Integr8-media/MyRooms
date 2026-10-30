@@ -112,6 +112,19 @@ const mockSession = {
   note: 'Ahmed',
 };
 
+// Phase 7 modules.
+let mockItems: object[] = [];
+const mockCustomers = [
+  {
+    id: 'c1',
+    org_id: 'org',
+    name: 'Omar',
+    phone: '01001234567',
+    default_discount_pct: 10,
+    is_active: 1,
+  },
+];
+
 // Reservations not checked in yet (useReserved).
 let mockReserved: object[] = [];
 const reservation = (id: string, stationId: string, from: number, to: number) => ({
@@ -133,6 +146,8 @@ let mockParams: Record<string, string> = {};
 jest.mock('@powersync/react', () => ({
   useQuery: (sql: string) => {
     if (sql.includes("x.status = 'reserved'")) return { data: mockReserved, isLoading: false };
+    if (sql.includes('FROM session_items WHERE session_id')) return { data: mockItems };
+    if (sql.includes('FROM customers WHERE org_id')) return { data: mockCustomers };
     const data = sql.includes('LEFT JOIN sessions x ON x.station_id')
       ? mockFloor
       : sql.includes('FROM session_segments g JOIN sessions')
@@ -178,6 +193,7 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
     org: { id: 'org', name: 'Arena', timezone: 'Africa/Cairo' },
     branch: { id: 'A', name: 'Branch A' },
     branches: [{ id: 'A', name: 'Branch A', is_active: 1 }],
+    features: { customers: true, snacks: true, expenses: true },
     role: mockRole,
     membership: { display_name: 'Sara' },
     can: (p: string) => p !== 'sessions.cancel' || mockRole !== 'cashier',
@@ -196,6 +212,10 @@ jest.mock('expo-router', () => ({
   },
   useLocalSearchParams: () => mockParams,
 }));
+jest.mock('@/features/customers/api', () => ({
+  setSessionCustomer: (...a: unknown[]) => mockSetCustomer(...a),
+}));
+const mockSetCustomer = jest.fn(async (..._a: unknown[]) => {});
 const mockStart = jest.fn(async (..._a: unknown[]) => 'new-id');
 const mockEnd = jest.fn(async (..._a: unknown[]) => {});
 jest.mock('./api', () => ({
@@ -212,6 +232,7 @@ const money = (piasters: number) => formatMoney(piasters, 'en');
 beforeEach(() => {
   jest.useFakeTimers({ now: NOW });
   mockRole = 'cashier';
+  mockItems = [];
   mockParams = {};
   mockReserved = [];
   jest.clearAllMocks();
@@ -306,6 +327,15 @@ describe('StartSessionScreen', () => {
     );
   });
 
+  it('starts the session for a customer found by phone', async () => {
+    await render(<StartSessionScreen />);
+    await fireEvent.changeText(screen.getByTestId('customer-search'), '0100 123');
+    await fireEvent.press(screen.getByTestId('customer-result-c1'));
+    expect(screen.getByTestId('customer-selected')).toHaveTextContent('Omar');
+    await fireEvent.press(screen.getByTestId('start-session'));
+    expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c1' }));
+  });
+
   it('warns when a walk-in would run into the next reservation', async () => {
     mockReserved = [reservation('r1', 'free', 60, 120)];
     await render(<StartSessionScreen />);
@@ -346,6 +376,27 @@ describe('SessionScreen', () => {
       pathname: '/checkout/[id]',
       params: { id: 's-open' },
     });
+  });
+
+  it('adds snacks to the bill so far and links a customer', async () => {
+    mockItems = [
+      {
+        id: 'i1',
+        session_id: 's-open',
+        product_id: 'cola',
+        name: 'Cola',
+        quantity: 2,
+        unit_price: 1500,
+      },
+    ];
+    await render(<SessionScreen />);
+    expect(screen.getByTestId('items-total')).toHaveTextContent(money(3000));
+    // 30 minutes at 60 EGP/h + 2 colas.
+    expect(screen.getByTestId('session-total')).toHaveTextContent(money(6000));
+
+    await fireEvent.changeText(screen.getByTestId('customer-search'), 'om');
+    await fireEvent.press(screen.getByTestId('customer-result-c1'));
+    expect(mockSetCustomer).toHaveBeenCalledWith('s-open', 'c1');
   });
 
   it('only owners and managers can cancel', async () => {

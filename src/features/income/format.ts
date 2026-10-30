@@ -1,6 +1,6 @@
 import type { DateRange } from '@/domain/income';
 import { parseTimestamp } from '@/domain/sessions';
-import { formatClock, parseDateKey, toLocal } from '@/domain/zoned-time';
+import { dateKey, formatClock, parseDateKey, toLocal } from '@/domain/zoned-time';
 
 /** "Mon, 5 Jan" for a local date key. Formatted in UTC so the device's own zone never shifts it. */
 export function formatDateKey(key: string, locale: string, withYear = false): string {
@@ -28,4 +28,16 @@ export function localClock(value: string | null | undefined, timeZone: string): 
   if (instant == null) return '—';
   const l = toLocal(instant, timeZone);
   return formatClock(l.hour * 60 + l.minute);
+}
+
+/** "Mon, 5 Jan 2026 14:05" in the org's time zone, or "—". */
+export function localDateTime(
+  value: string | null | undefined,
+  timeZone: string,
+  locale: string,
+): string {
+  const instant = parseTimestamp(value);
+  if (instant == null) return '—';
+  const l = toLocal(instant, timeZone);
+  return `${formatDateKey(dateKey(l), locale, true)} ${formatClock(l.hour * 60 + l.minute)}`;
 }

@@ -2,6 +2,7 @@ import { useQuery } from '@powersync/react';
 import { useEffect, useState } from 'react';
 
 import { segmentFromRow } from '@/domain/billing';
+import type { ItemLike } from '@/domain/items';
 import { priceSession, type Bill, type HourPackage, type RateRule } from '@/domain/pricing';
 import { parseTimestamp, toPricingSegments, type SessionTiming } from '@/domain/sessions';
 import { toPackage, toRateRule } from '@/features/pricing/data';
@@ -117,8 +118,8 @@ export function sessionTiming(row: {
 }
 
 /**
- * Live estimate of what the session costs so far (the final bill is made by the server at
- * checkout). Returns null if the segments can't be read.
+ * Live estimate of what the session costs so far, snacks included (the final bill is made by
+ * the server at checkout). Returns null if the segments can't be read.
  */
 export function estimateSession(
   segments: readonly SessionSegmentRow[],
@@ -126,6 +127,7 @@ export function estimateSession(
   pkg: HourPackage | null,
   timeZone: string,
   now: number,
+  items: readonly ItemLike[] = [],
 ): Bill | null {
   const records = [];
   for (const g of segments) {
@@ -140,6 +142,7 @@ export function estimateSession(
       rules,
       timeZone,
       package: pkg,
+      items: items.map((i) => ({ quantity: i.quantity ?? 0, unitPrice: i.unit_price ?? 0 })),
     });
   } catch {
     return null;

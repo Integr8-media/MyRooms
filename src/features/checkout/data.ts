@@ -11,8 +11,9 @@ import {
   type BillDetails,
   type BillStatus,
 } from '@/domain/billing';
+import { groupItems, itemsTotal, type ItemLine } from '@/domain/items';
 import type { Bill } from '@/domain/pricing';
-import type { BillRow, PaymentRow } from '@/lib/powersync/schema';
+import type { BillRow, PaymentRow, SessionItemRow } from '@/lib/powersync/schema';
 
 export function useBill(id: string | null | undefined) {
   const { data, isLoading } = useQuery<BillRow>('SELECT * FROM bills WHERE id = ?', [id ?? null]);
@@ -37,6 +38,8 @@ export type BillSummary = {
   details: BillDetails | null;
   /** For BillBreakdown; null if the bill has no priced lines yet. */
   breakdown: Bill | null;
+  /** Snacks and drinks, grouped by product (from the local session_items). */
+  items: ItemLine[];
   subtotal: number;
   discount: number;
   total: number;
@@ -47,13 +50,18 @@ export type BillSummary = {
 };
 
 /**
- * Totals from the bill row and the local payments (not bills.total / paid_amount / status,
- * which only change when the server has seen the latest payments).
+ * Totals from the bill row, the local items and the local payments (not bills.items_amount /
+ * total / paid_amount / status, which only change when the server has seen the latest items
+ * and payments).
  */
-export function summarizeBill(bill: BillRow, payments: readonly PaymentRow[]): BillSummary {
+export function summarizeBill(
+  bill: BillRow,
+  payments: readonly PaymentRow[],
+  items: readonly SessionItemRow[] = [],
+): BillSummary {
   const amounts = {
     timeAmount: bill.time_amount ?? 0,
-    itemsAmount: bill.items_amount ?? 0,
+    itemsAmount: itemsTotal(items),
     discountAmount: bill.discount_amount ?? 0,
   };
   const details = parseBillDetails(bill.details);
@@ -62,6 +70,7 @@ export function summarizeBill(bill: BillRow, payments: readonly PaymentRow[]): B
   return {
     details,
     breakdown: details ? billFromDetails(details, amounts) : null,
+    items: groupItems(items),
     subtotal: amounts.timeAmount + amounts.itemsAmount,
     discount: amounts.discountAmount,
     total,
@@ -88,7 +97,9 @@ export function useUnpaid(branchId: string | null | undefined): UnpaidRow[] {
     `SELECT * FROM (
        SELECT x.id AS session_id, x.actual_end, s.name AS station_name, b.id AS bill_id,
               b.number,
-              b.time_amount + COALESCE(b.items_amount, 0) - COALESCE(b.discount_amount, 0) AS total,
+              b.time_amount - COALESCE(b.discount_amount, 0)
+                + COALESCE((SELECT SUM(i.quantity * i.unit_price) FROM session_items i
+                             WHERE i.session_id = x.id), 0) AS total,
               COALESCE((SELECT SUM(CASE WHEN p.kind = 'refund' THEN -p.amount ELSE p.amount END)
                           FROM payments p WHERE p.bill_id = b.id), 0) AS paid
          FROM sessions x

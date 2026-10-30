@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { parseCustomerDiscount, type ItemLine } from '@/domain/items';
 import { formatMoney } from '@/domain/money';
 import type { Bill } from '@/domain/pricing';
 import { formatClock, toLocal } from '@/domain/zoned-time';
@@ -8,16 +9,25 @@ import { Card, Notice, Text } from '@/ui';
 
 import { formatDuration } from './format';
 
-/** Line-by-line bill: package, each priced time piece, total, and a warning for unpriced time. */
+/**
+ * Line-by-line bill: package, each priced time piece, snacks and drinks, discount, total, and a
+ * warning for unpriced time.
+ */
 export function BillBreakdown({
   bill,
   timeZone,
   title,
+  items = [],
+  discountReason,
   testID = 'bill',
 }: {
   bill: Bill;
   timeZone: string;
   title?: string;
+  /** Snacks and drinks (already counted in bill.itemsAmount). */
+  items?: readonly ItemLine[];
+  /** bills.discount_reason: a customer's default discount is labelled as such. */
+  discountReason?: string | null;
   testID?: string;
 }) {
   const { t, i18n } = useTranslation();
@@ -54,9 +64,21 @@ export function BillBreakdown({
           danger={!line.coveredByPackage && !line.ruleId}
         />
       ))}
+      {items.map((item) => (
+        <Row
+          key={`item-${item.productId}-${item.unitPrice}`}
+          label={t('snacks.itemLine', { name: item.name, count: item.quantity })}
+          detail={t('snacks.each', { price: money(item.unitPrice) })}
+          amount={money(item.amount)}
+        />
+      ))}
       {bill.discountAmount > 0 ? (
         <Row
-          label={t('checkout.discount')}
+          label={
+            parseCustomerDiscount(discountReason) != null
+              ? t('checkout.customerDiscount', { percent: parseCustomerDiscount(discountReason) })
+              : t('checkout.discount')
+          }
           detail={t('checkout.beforeDiscount', { amount: money(bill.total + bill.discountAmount) })}
           amount={`−${money(bill.discountAmount)}`}
         />

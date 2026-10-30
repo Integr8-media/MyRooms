@@ -19,6 +19,11 @@ import { ColorDot } from '@/features/pricing/pickers';
 import { formatDuration } from '@/features/pricing/format';
 import { clockAt, useReserved } from '@/features/reservations/data';
 import { nextReservation, runsIntoReservation } from '@/domain/reservations';
+import { groupItems } from '@/domain/items';
+import { setSessionCustomer } from '@/features/customers/api';
+import { CustomerPicker } from '@/features/customers/CustomerPicker';
+import { useSessionItems } from '@/features/snacks/data';
+import { ItemsCard } from '@/features/snacks/ItemsCard';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import {
@@ -63,7 +68,7 @@ const sessionStatus = (value: string | null) => STATUSES.find((s) => s === value
 export function SessionScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { org, branch, can } = useWorkspace();
+  const { org, branch, can, features } = useWorkspace();
   const timeZone = org?.timezone ?? 'Africa/Cairo';
   const now = useNow(1000);
   const { busy, error, run } = useAsyncAction();
@@ -73,6 +78,7 @@ export function SessionScreen() {
 
   const { session, isLoading } = useSession(id);
   const segments = useSessionSegments(id);
+  const items = useSessionItems(id);
   const { rules, packages } = useOrgPricing(org?.id);
   const { data: stationRows } = useQuery<StationInfo>(
     `SELECT s.name, s.station_type_id, s.status, t.name AS type_name, t.max_players
@@ -99,7 +105,7 @@ export function SessionScreen() {
   const pkg = session.package_id ? (packages.get(session.package_id) ?? null) : null;
   const endedAt = parseTimestamp(session.actual_end);
   const priceAt = active ? now : (endedAt ?? now);
-  const bill = estimateSession(segments, rules, pkg, timeZone, priceAt);
+  const bill = estimateSession(segments, rules, pkg, timeZone, priceAt, items);
   const running = segments.find((g) => !g.ended_at);
   const players = running?.players ?? segments[segments.length - 1]?.players ?? 1;
   const maxPlayers = station?.max_players ?? 1;
@@ -224,6 +230,26 @@ export function SessionScreen() {
       ) : null}
 
       <ErrorNotice error={error} />
+
+      {active && features.customers && can('customers.manage') ? (
+        <Card>
+          <CustomerPicker
+            value={session.customer_id}
+            disabled={busy}
+            onChange={(c) => void run(() => setSessionCustomer(session.id, c?.id ?? null))}
+          />
+          <Text variant="muted">{t('customers.sessionHint')}</Text>
+        </Card>
+      ) : null}
+
+      {active && features.snacks ? (
+        <ItemsCard
+          sessionId={session.id}
+          items={items}
+          canAdd={can('items.sell')}
+          canRemove={can('items.sell')}
+        />
+      ) : null}
 
       {active && can('sessions.run') ? (
         <>
@@ -388,6 +414,7 @@ export function SessionScreen() {
           bill={bill}
           timeZone={timeZone}
           title={active ? t('sessions.billSoFar') : t('sessions.estimatedBill')}
+          items={groupItems(items)}
           testID="session"
         />
       ) : null}

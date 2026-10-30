@@ -3,9 +3,10 @@
 #   owner    everything in their organizations
 #   manager  their branches, the staff of those branches, invitations they sent
 #   cashier  their branches and their own membership
-#   everyone station types, rate rules and packages of their organizations (to price sessions),
-#            and the stations, sessions (with segments), bills and payments of the branches
-#            they work in
+#   everyone station types, rate rules, packages, products and customers of their organizations,
+#            and the stations, sessions (with segments and items), bills, payments and stock
+#            movements of the branches they work in
+#   expenses owners (all branches) and managers (their branches) only
 config:
   edition: 3
 
@@ -31,6 +32,15 @@ streams:
       - SELECT * FROM rate_rules WHERE org_id IN my_orgs
       - SELECT * FROM packages WHERE org_id IN my_orgs
 
+  # Phase 7: snacks and customers are shared by every branch of the organization.
+  org_catalog:
+    auto_subscribe: true
+    with:
+      my_orgs: SELECT org_id FROM memberships WHERE user_id = auth.user_id()
+    queries:
+      - SELECT * FROM products WHERE org_id IN my_orgs
+      - SELECT * FROM customers WHERE org_id IN my_orgs
+
   # Branches the user is assigned to (managers and cashiers), and their stations.
   assigned_branches:
     auto_subscribe: true
@@ -43,6 +53,8 @@ streams:
       - SELECT * FROM session_segments WHERE branch_id IN my_branches
       - SELECT * FROM bills WHERE branch_id IN my_branches
       - SELECT * FROM payments WHERE branch_id IN my_branches
+      - SELECT * FROM session_items WHERE branch_id IN my_branches
+      - SELECT * FROM stock_movements WHERE branch_id IN my_branches
 
   # Owners: every branch, member and invitation of their organizations.
   owner_data:
@@ -56,17 +68,21 @@ streams:
       - SELECT * FROM session_segments WHERE org_id IN owned_orgs
       - SELECT * FROM bills WHERE org_id IN owned_orgs
       - SELECT * FROM payments WHERE org_id IN owned_orgs
+      - SELECT * FROM session_items WHERE org_id IN owned_orgs
+      - SELECT * FROM stock_movements WHERE org_id IN owned_orgs
+      - SELECT * FROM expenses WHERE org_id IN owned_orgs
       - SELECT * FROM memberships WHERE org_id IN owned_orgs
       - SELECT * FROM member_branches WHERE org_id IN owned_orgs
       - SELECT * FROM invitations WHERE org_id IN owned_orgs
 
-  # Managers: branch assignments in the branches they manage...
+  # Managers: branch assignments and expenses in the branches they manage...
   manager_branch_staff:
     auto_subscribe: true
     with:
       managed_branches: SELECT branch_id FROM member_branches WHERE membership_id IN (SELECT id FROM memberships WHERE user_id = auth.user_id() AND role = 'manager')
     queries:
       - SELECT * FROM member_branches WHERE branch_id IN managed_branches
+      - SELECT * FROM expenses WHERE branch_id IN managed_branches
 
   # ...and the memberships (name, email, role) of the people working there.
   manager_members:

@@ -58,6 +58,14 @@ let mockRejections: object[] = [];
 
 jest.mock('@powersync/react', () => ({
   useQuery: (sql: string) => {
+    if (sql.includes('FROM customers WHERE org_id')) {
+      return {
+        data: [
+          { id: 'c1', name: 'Omar', phone: '01001234567', default_discount_pct: 0, is_active: 1 },
+        ],
+        isLoading: false,
+      };
+    }
     const data = sql.includes('upload_rejections')
       ? mockRejections
       : sql.includes("status IN ('completed', 'no_show')")
@@ -92,6 +100,7 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
     org: { id: 'org', name: 'Arena', timezone: 'Africa/Cairo' },
     branch: { id: 'A', name: 'Branch A' },
     branches: [{ id: 'A', name: 'Branch A', is_active: 1 }],
+    features: { customers: true, snacks: true, expenses: true },
     role: mockRole,
     can: () => true,
   }),
@@ -230,6 +239,23 @@ describe('ReservationFormScreen', () => {
       pathname: '/reservations/[id]',
       params: { id: 'new-res' },
     });
+  });
+
+  it('books for a customer picked from the list (name and phone filled in)', async () => {
+    mockParams = { stationId: 'r1', date: '2026-01-05', time: '18:00' };
+    await render(<ReservationFormScreen />);
+    await fireEvent.changeText(screen.getByTestId('customer-search'), 'omar');
+    await fireEvent.press(screen.getByTestId('customer-result-c1'));
+    expect(screen.getByTestId('reservation-name').props.value).toBe('Omar');
+    expect(screen.getByTestId('reservation-phone').props.value).toBe('01001234567');
+    await fireEvent.press(screen.getByTestId('save-reservation'));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerName: 'Omar',
+        customerPhone: '01001234567',
+        customerId: 'c1',
+      }),
+    );
   });
 
   it('refuses a slot that is already booked', async () => {

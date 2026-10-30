@@ -16,6 +16,7 @@ import {
 import { parseTimestamp } from '@/domain/sessions';
 import { reservationSchema, validate } from '@/domain/validation';
 import { ErrorNotice } from '@/features/common/ErrorNotice';
+import { CustomerPicker } from '@/features/customers/CustomerPicker';
 import { ColorDot } from '@/features/pricing/pickers';
 import { formatDuration } from '@/features/pricing/format';
 import { useNow, useOrgPricing } from '@/features/sessions/data';
@@ -69,9 +70,10 @@ function ReservationForm({
   existing: ReturnType<typeof useReservation>['reservation'] | null;
 }) {
   const { t, i18n } = useTranslation();
-  const { org, branch } = useWorkspace();
+  const { org, branch, can, features } = useWorkspace();
   const timeZone = org?.timezone ?? 'Africa/Cairo';
   const now = useNow(30_000);
+  const pickCustomers = features.customers && can('customers.manage');
   const { busy, error, run } = useAsyncAction();
 
   const initial = (() => {
@@ -107,6 +109,7 @@ function ReservationForm({
   const [name, setName] = useState(initial.name);
   const [phone, setPhone] = useState(initial.phone);
   const [note, setNote] = useState(initial.note);
+  const [customerId, setCustomerId] = useState<string | null>(existing?.customer_id ?? null);
   const [touched, setTouched] = useState(false);
 
   const stations = useBranchStations(branch?.id).filter((s) => s.status === 'active');
@@ -176,6 +179,7 @@ function ReservationForm({
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           note: data.note,
+          ...(pickCustomers ? { customerId } : {}),
         });
       } else {
         id = await createReservation({
@@ -188,6 +192,7 @@ function ReservationForm({
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           note: data.note,
+          customerId: pickCustomers ? customerId : null,
         });
       }
       if (params.rejected) {
@@ -295,6 +300,18 @@ function ReservationForm({
       </Card>
 
       <Card className="gap-3">
+        {pickCustomers ? (
+          <CustomerPicker
+            value={customerId}
+            onChange={(c) => {
+              setCustomerId(c?.id ?? null);
+              if (c) {
+                setName(c.name ?? '');
+                setPhone(c.phone ?? '');
+              }
+            }}
+          />
+        ) : null}
         <TextField
           label={t('reservations.customerName')}
           value={name}

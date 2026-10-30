@@ -6,12 +6,15 @@ import { View } from 'react-native';
 
 import { isPaymentMethod, type BillStatus } from '@/domain/billing';
 import { formatMoney } from '@/domain/money';
+import { parseCustomerDiscount } from '@/domain/items';
 import { parseTimestamp } from '@/domain/sessions';
 import { formatClock, toLocal } from '@/domain/zoned-time';
 import { ErrorNotice } from '@/features/common/ErrorNotice';
 import { BillBreakdown } from '@/features/pricing/BillBreakdown';
 import { formatDuration } from '@/features/pricing/format';
 import { useSession } from '@/features/sessions/data';
+import { useSessionItems } from '@/features/snacks/data';
+import { ItemsCard } from '@/features/snacks/ItemsCard';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import {
@@ -45,7 +48,7 @@ type Panel = 'refund' | 'void' | null;
 export function CheckoutScreen() {
   const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { org, branch, can } = useWorkspace();
+  const { org, branch, can, features } = useWorkspace();
   const timeZone = org?.timezone ?? 'Africa/Cairo';
   const { busy, error, run } = useAsyncAction();
   const [panel, setPanel] = useState<Panel>(null);
@@ -54,6 +57,7 @@ export function CheckoutScreen() {
   const { session, isLoading } = useSession(id);
   const { bill, isLoading: billLoading } = useBill(id);
   const payments = usePayments(id);
+  const items = useSessionItems(id);
   const { data: stationRows } = useQuery<{ name: string | null }>(
     'SELECT name FROM stations WHERE id = ?',
     [session?.station_id ?? null],
@@ -100,6 +104,12 @@ export function CheckoutScreen() {
               start != null && end != null ? formatDuration((end - start) / 60_000, t) : '—',
           })}
         </Text>
+        {session.customer_name ? (
+          <Text testID="checkout-customer">
+            {session.customer_name}
+            {session.customer_phone ? ` · ${session.customer_phone}` : ''}
+          </Text>
+        ) : null}
         {session.note ? <Text variant="muted">{session.note}</Text> : null}
       </Card>
     </>
@@ -137,7 +147,8 @@ export function CheckoutScreen() {
     );
   }
 
-  const summary = summarizeBill(bill, payments);
+  const summary = summarizeBill(bill, payments, items);
+  const customerPercent = parseCustomerDiscount(bill.discount_reason);
   const isVoid = summary.status === 'void';
   const synced = bill.number != null;
 
@@ -151,6 +162,8 @@ export function CheckoutScreen() {
         start,
         end,
         summary,
+        discountReason: bill.discount_reason,
+        customerName: session.customer_name,
         payments,
         timeZone,
         language: i18n.language,
@@ -178,6 +191,8 @@ export function CheckoutScreen() {
           bill={summary.breakdown}
           timeZone={timeZone}
           title={t('checkout.bill')}
+          items={summary.items}
+          discountReason={bill.discount_reason}
           testID="checkout"
         />
       ) : (
@@ -249,6 +264,15 @@ export function CheckoutScreen() {
         </Card>
       ) : null}
 
+      {features.snacks && !isVoid ? (
+        <ItemsCard
+          sessionId={session.id}
+          items={items}
+          canAdd={can('items.sell')}
+          canRemove={can('items.removeAfterEnd') && summary.paid === 0}
+        />
+      ) : null}
+
       {!isVoid && summary.due > 0 && can('bills.pay') ? (
         <PaymentForm
           due={summary.due}
@@ -270,14 +294,14 @@ export function CheckoutScreen() {
         <DiscountForm
           subtotal={summary.subtotal}
           current={summary.discount}
-          currentReason={bill.discount_reason}
+          currentReason={customerPercent != null ? null : bill.discount_reason}
           busy={busy}
           onApply={(amount, reason) =>
             act(() => applyDiscount(bill.id, amount, reason), t('checkout.discountSaved'))
           }
         />
       ) : null}
-      {bill.discount_reason && summary.discount > 0 ? (
+      {bill.discount_reason && summary.discount > 0 && customerPercent == null ? (
         <Text variant="muted">{t('checkout.discountWhy', { reason: bill.discount_reason })}</Text>
       ) : null}
 

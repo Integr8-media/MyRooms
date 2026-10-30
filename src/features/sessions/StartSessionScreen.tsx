@@ -11,6 +11,7 @@ import { DURATION_CHOICES, plannedEnd, type SessionKind } from '@/domain/session
 import { sessionMinutesField, sessionNoteSchema, validate } from '@/domain/validation';
 import { dateKey, formatClock, minuteOfDay, toLocal } from '@/domain/zoned-time';
 import { ErrorNotice } from '@/features/common/ErrorNotice';
+import { CustomerPicker } from '@/features/customers/CustomerPicker';
 import { formatDuration, formatPerHour } from '@/features/pricing/format';
 import { clockAt, useReserved } from '@/features/reservations/data';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
@@ -51,7 +52,7 @@ type TimeChoice =
 export function StartSessionScreen() {
   const { t, i18n } = useTranslation();
   const { stationId } = useLocalSearchParams<{ stationId: string }>();
-  const { org, branch } = useWorkspace();
+  const { org, branch, can, features } = useWorkspace();
   const timeZone = org?.timezone ?? 'Africa/Cairo';
   const { busy, error, run } = useAsyncAction();
   // Estimates and the end time follow the clock.
@@ -79,6 +80,7 @@ export function StartSessionScreen() {
   const [time, setTime] = useState<TimeChoice>({ type: 'minutes', minutes: 60 });
   const [customMinutes, setCustomMinutes] = useState('');
   const [note, setNote] = useState('');
+  const [customerId, setCustomerId] = useState<string | null>(null);
 
   if (isLoading) return <LoadingView />;
   if (!station) {
@@ -159,6 +161,7 @@ export function StartSessionScreen() {
         minutes: time.type === 'package' ? null : minutes,
         packageId: kind === 'fixed' && pkg ? pkg.id : null,
         note: noteResult.ok ? noteResult.data : null,
+        customerId: features.customers ? customerId : null,
       });
       if (router.canGoBack()) router.back();
       else router.replace('/');
@@ -273,6 +276,10 @@ export function StartSessionScreen() {
               </>
             ) : null}
           </View>
+        ) : null}
+
+        {features.customers && can('customers.manage') ? (
+          <CustomerPicker value={customerId} onChange={(c) => setCustomerId(c?.id ?? null)} />
         ) : null}
 
         <TextField

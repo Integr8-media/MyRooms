@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 
+import { parseCustomerDiscount } from '@/domain/items';
 import { formatMoney } from '@/domain/money';
 import { formatClock, toLocal } from '@/domain/zoned-time';
 import { formatDuration } from '@/features/pricing/format';
@@ -15,6 +16,10 @@ export type ReceiptInput = {
   start: number | null;
   end: number | null;
   summary: BillSummary;
+  /** bills.discount_reason (a customer's default discount gets its own label). */
+  discountReason?: string | null;
+  /** Shown under the title when the session has a customer. */
+  customerName?: string | null;
   payments: readonly { kind: string | null; method: string | null; amount: number | null }[];
   timeZone: string;
   language: string;
@@ -68,9 +73,27 @@ export function receiptHtml(r: ReceiptInput): string {
       ),
     );
   }
+  for (const item of summary.items) {
+    lines.push(
+      row(
+        `${escape(t('snacks.itemLine', { name: item.name, count: item.quantity }))}<br><small>${escape(
+          t('snacks.each', { price: formatMoney(item.unitPrice, r.language) }),
+        )}</small>`,
+        money(item.amount),
+      ),
+    );
+  }
   if (summary.discount > 0) {
+    const percent = parseCustomerDiscount(r.discountReason);
     lines.push(row(escape(t('checkout.subtotal')), money(summary.subtotal)));
-    lines.push(row(escape(t('checkout.discount')), `−${money(summary.discount)}`));
+    lines.push(
+      row(
+        escape(
+          percent != null ? t('checkout.customerDiscount', { percent }) : t('checkout.discount'),
+        ),
+        `−${money(summary.discount)}`,
+      ),
+    );
   }
   lines.push(row(escape(t('checkout.total')), money(summary.total), true));
   for (const p of r.payments) {
@@ -114,6 +137,7 @@ export function receiptHtml(r: ReceiptInput): string {
   <div class="center muted">${escape(r.branchName)}</div>
   <div class="center" style="margin-top:8px">${escape(title)}</div>
   <div class="center muted">${escape(r.stationName)} · ${when(r.start)} → ${when(r.end)}</div>
+  ${r.customerName ? `<div class="center muted">${escape(r.customerName)}</div>` : ''}
   <table>${lines.join('\n')}</table>
   <div class="status">${escape(t(`checkout.status.${summary.status}`))}</div>
   <div class="center muted" style="margin-top:12px">${escape(t('checkout.thanks'))}</div>

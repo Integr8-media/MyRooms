@@ -2,16 +2,20 @@ import en from '@/lib/i18n/locales/en.json';
 
 import {
   branchSchema,
+  customerSchema,
+  expenseSchema,
   isTimeZone,
   organizationSchema,
   packageSchema,
+  productSchema,
   rateRuleSchema,
   setPasswordSchema,
   signUpSchema,
   stationSchema,
   stationTypeSchema,
-  validate,
+  stockSchema,
   type ValidationKey,
+  validate,
 } from './validation';
 
 describe('validation', () => {
@@ -176,5 +180,65 @@ describe('validation', () => {
     expect(validate(packageSchema, { name: 'x', duration: '0:00', price: '1' }).errors).toEqual({
       duration: 'outOfRange',
     });
+  });
+
+  it('validates customers, products, stock counts and expenses (Phase 7)', () => {
+    expect(
+      validate(customerSchema, { name: ' Omar ', phone: ' ', notes: '', discount: '١٠' }).data,
+    ).toEqual({ name: 'Omar', phone: null, notes: null, discount: 10 });
+    expect(
+      validate(customerSchema, { name: '', phone: '', notes: '', discount: '101' }).errors,
+    ).toEqual({ name: 'required', discount: 'outOfRange' });
+
+    expect(
+      validate(productSchema, {
+        name: 'Cola',
+        category: 'Drinks',
+        price: '15.50',
+        trackStock: true,
+        lowStockAt: '',
+      }).data,
+    ).toEqual({
+      name: 'Cola',
+      category: 'Drinks',
+      price: 1550,
+      trackStock: true,
+      lowStockAt: null,
+    });
+    expect(
+      validate(productSchema, {
+        name: 'Cola',
+        category: '',
+        price: 'abc',
+        trackStock: true,
+        lowStockAt: '-1',
+      }).errors,
+    ).toEqual({ price: 'invalidAmount', lowStockAt: 'outOfRange' });
+
+    expect(validate(stockSchema, { quantity: '24', note: '' }).data).toEqual({
+      quantity: 24,
+      note: null,
+    });
+    expect(validate(stockSchema, { quantity: '-1', note: '' }).errors).toEqual({
+      quantity: 'outOfRange',
+    });
+
+    const expense = {
+      category: 'electricity',
+      amount: '2500',
+      method: 'cash' as const,
+      date: '2026-10-30',
+      note: '',
+    };
+    expect(validate(expenseSchema, expense).data).toEqual({
+      category: 'electricity',
+      amount: 250_000,
+      method: 'cash',
+      date: '2026-10-30',
+      note: null,
+    });
+    expect(
+      validate(expenseSchema, { ...expense, category: '', amount: '0', date: '2026-02-30' }).errors,
+    ).toEqual({ category: 'required', amount: 'outOfRange', date: 'invalidDate' });
   });
 });

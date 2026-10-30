@@ -149,6 +149,14 @@ Reservations (Phase 6) need only the new migration (step 5; it turns on the `btr
 20. 30 minutes before a reservation, the station shows **Reserved soon** on the floor and the booking is listed under **Arrivals**. A walk-in that would run into it gets a warning. Open the reservation and **Check in**: it becomes a playing session that ends at the booked time (checkout as usual). If the station is still busy, use **Check in on another station**.
 21. For a reservation nobody came to: **Mark as no-show** appears 15 minutes after the start (Studio: `status = no_show`). A cashier can cancel a reservation, but still can't cancel a running session.
 
+Optional modules (Phase 7) need the new migration (step 5) **and** a PowerSync restart for the new sync streams (`customers`, `products`, `session_items`, `stock_movements`, `expenses`). No new setting or Edge Function; `create-bill` is unchanged (the database now adds the items and the customer discount to each bill). All three modules are on by default: Settings → Organization → **Optional modules**.
+
+22. **Customers:** as the cashier, start a session and type a phone number in **Customer**: no match, so **Add as a new customer** (name + phone) and start. The customer appears under **Customers** on the floor, and in Studio → `customers` and on the session (`customer_id`). Book a reservation for the same customer by searching their name.
+23. As a manager, open the customer and set a **Default discount** of 10 %. End a session for them: checkout shows **Customer discount (10%)** and the bill in Studio → `bills` has `discount_reason = customer:10`. As the cashier, the discount field is read-only.
+24. **Snacks:** as the owner, open **Snacks & stock** → **Add product** (Cola, 15 EGP, count stock, warn at 5). As a manager, **Restock** 24 in this branch. As the cashier, add 2 colas to a running session: the bill so far goes up by 30 EGP and the stock shows 22. End the session: the bill in Studio → `bills` has `items_amount = 3000`. Add another cola at checkout: the total follows. A cashier can remove an item only while the session is running; a manager also after it ended, until a payment is taken.
+25. **Count** the cola stock as a manager (enter what is on the shelf): the difference is saved as a correction. When stock is at or below the warning level, the floor shows **Snacks & stock (1 low)** and the product list warns.
+26. **Expenses:** as a manager, open **Expenses** → **Add expense** (Electricity, 2,500 EGP, Instapay, today). It shows under **This month** by category; edit and delete one (Studio → `audit_log` lists each change). The cashier has no Expenses button and syncs no expenses. Then, as the owner, switch **Expenses** off in Settings → Organization: the button disappears everywhere and the data stays in Studio.
+
 ## 7b. Edge Functions (required for checkout)
 
 Two functions run in Supabase's `functions` container:

@@ -13,10 +13,28 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 4 Checkout and payments                 | **Code done, VPS test pending**   | `feature/phase-4-billing` (not committed)               | 212 pgTAP checks pass on PGlite; 144 Jest tests                             |
 | 5 Income dashboard                      | **Code done, VPS test pending**   | `feature/phase-5-income-dashboard` (not committed)      | No server changes; 170 Jest tests                                           |
 | 6 Calendar and reservations (MVP pilot) | **Code done, VPS test pending**   | `feature/phase-6-calendar-reservations` (not committed) | 256 pgTAP checks pass on PGlite; 207 Jest tests                             |
-| 7 Optional modules                      | Not started                       |                                                         |                                                                             |
+| 7 Optional modules                      | **Code done, VPS test pending**   | `feature/phase-7-optional-modules` (not committed)      | 315 pgTAP checks pass on PGlite; 252 Jest tests                             |
 | 8 Advanced reports                      | Not started                       |                                                         |                                                                             |
 | 9 Offline hardening                     | Not started                       |                                                         |                                                                             |
 | 10 Release                              | Not started                       |                                                         |                                                                             |
+
+## Phase 7: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261103000000_phase7_modules.sql`): `customers` (org-wide: name, phone, notes, `default_discount_pct`, `is_active`; any member adds/edits, only owners/managers change the discount, trigger `check_customer`; phone **not unique**), `sessions.customer_id` (trigger `sessions_customer`: same org), `products` (org-wide, owners only, audited), `session_items` (product, quantity 1-1000; the trigger copies org/branch from the session and **name/unit_price from the product**, so clients can't set prices; insert while the session is active or completed with a non-void bill; delete while active by any branch staff, after it ended only owners/managers, before any payment, and never below the bill's discount; no UPDATE), `stock_movements` (`purchase` > 0 / `adjustment` +/-, per branch, owners and branch managers, insert-only), `expenses` (fixed category list, amount, method, `spent_on` date, note; owners and branch managers read/write/delete; cashiers see nothing). Everything money-related is audited (`audit_row`). `create_bill()` (same signature) now sets `items_amount` from the items and the customer's default discount (`discount_reason = 'customer:<pct>'`); trigger `update_bill_items` keeps `bills.items_amount` in step when items change after the bill. The `create-bill` Edge Function and `src/domain/billing.ts` are unchanged (no `domain:sync` needed).
+- **Sync:** new stream `org_catalog` (products + customers of every org the user belongs to); `session_items` and `stock_movements` added to `assigned_branches` and `owner_data`; `expenses` in `owner_data` and `manager_branch_staff` (managed branches only). Publication extended.
+- **Stock = sum(stock_movements) - sum(session_items)** per branch and product, computed on the device in SQL (`useProducts`). Sales are not movements, so offline sales can't double-count and removing an item puts it back. A count saves the difference as an adjustment.
+- **Domain:** `src/domain/items.ts` (`itemsTotal`, `groupItems`, `stockState` ok/low/out/untracked, `adjustmentFor`, `customerDiscount` (= `percentDiscount`), `customerDiscountReason`/`parseCustomerDiscount`, `normalizePhone` (Arabic-Indic digits, +20/0020), `searchCustomers`, `samePhone`), `src/domain/expenses.ts` (`EXPENSE_CATEGORIES` = SQL check list, `summarizeExpenses`). New zod schemas: customer, product, stock, expense. New permissions: `customers.manage`, `customers.discount`, `products.edit`, `items.sell`, `items.removeAfterEnd`, `stock.manage`, `expenses.manage`. New error keys: `invalid_customer`, `invalid_product`, `invalid_quantity`.
+- **App:** floor strip `ModuleLinks` (Customers, Snacks & stock with a low-stock count, Expenses for owners/managers) shown only for modules that are on. Routes `/customers` + `/customers/[id]` (search by phone/name, edit, default discount, visits and total paid), `/products` + `/products/[id]` (stock in the current branch, low-stock notice, owners edit products, owners/managers restock and count, history), `/expenses` + `/expenses/[id]` (today/week/month by category, add/edit/delete with inline confirm). `CustomerPicker` (search, quick add with duplicate-phone warning) on the start screen, reservation form (fills name/phone) and session sheet (`setSessionCustomer`). `ItemsCard` on the session sheet (active) and checkout (until void). Checkout, `UnpaidList`, the session estimate and the receipt add up the **local** `session_items` (never `bills.items_amount`), list items, and label `customer:<pct>` as "Customer discount (n%)". `insertBill` applies the customer discount locally like `create_bill`. The "Not saved" list names item/customer/stock/expense rejections.
+- **Module toggles only hide UI.** The server accepts writes whatever the toggle (an offline sale or expense must not be lost). With snacks off, item lines already on a bill still show at checkout and on the receipt (the money is real); only adding/removing is hidden.
+
+**Verified:** lint, format, typecheck, 252 Jest tests (new: items/expenses domain, permissions, validation; ItemsCard add/remove, products list low-stock, stock count/restock, owner adds product, ModuleLinks on/off; CustomerPicker search/quick add/duplicate; customer edit (cashier can't send a discount), visits; expenses period totals, permission/module-off, add/edit/delete; checkout items + customer discount, snacks off; receipt items; start screen and reservation form pass `customerId`; session sheet items in the estimate). 8 migrations + 315 pgTAP checks pass on PGlite (59 new); removing the server price override, letting cashiers restock or see expenses, dropping the discount check, or letting cashiers remove items after the end each make tests fail. Sync config validates. Web export builds.
+**Not verified:** anything signed in (no backend), the new screens in Arabic and on a phone, the real pgTAP run, two devices selling the last item offline.
+
+### Phase 7 "done when" still open
+
+- [ ] On the VPS: step 7 items 22-26 (migration + PowerSync restart first).
+- [ ] Check the new screens in Arabic (RTL) and on a phone-sized screen.
+- [ ] Switch each module off and on with real data and confirm it disappears cleanly (floor, start screen, reservation form, session sheet, checkout).
 
 ## Phase 6: what was built (2026-10-30)
 
@@ -149,6 +167,14 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Stock is derived, not stored:** restocks/corrections minus items sold, per branch. No trigger writes sale movements. Selling when stock is 0 is allowed (warning only): counts are corrected later.
+- **2026-10-30: The server sets item prices** from the product at upload time (like `create-bill` pricing time): an offline sale made just before a price change is billed at the new price.
+- **2026-10-30: The customer's default discount is applied once, when the bill is made** (`create_bill` and `insertBill`), on time + items at that moment. Items added at checkout afterwards are not discounted; a manager can change the discount before payment. Cashiers can't set a customer's discount.
+- **2026-10-30: Customer phone numbers are not unique** (offline duplicates would make the linked session fail to upload). The app warns about a known number and offers to pick that customer.
+- **2026-10-30: Products and customers are org-wide; stock and expenses are per branch.** Expense categories are a fixed list (rent, salaries, electricity, internet, maintenance, supplies, snacks, other); ask the client if they need their own.
+- **2026-10-30: Feature toggles only hide the modules in the app**; the server doesn't refuse writes when a module is off (offline devices may not know yet). Existing items stay on bills.
+- **2026-10-30: Expenses are owners and managers only** (cashiers neither see nor sync them). Edits and deletes are allowed and audited. Net profit is Phase 8.
+
 - **2026-10-30: Reservations live in `sessions`** (kind `reservation`), not a separate table: check-in is a status change; billing, alerts and sync work unchanged; bill id = session id still holds.
 - **2026-10-30: The constraint blocks double booking between reservations only**; a booking that overlaps a walk-in's planned end is refused by the trigger (point-in-time check). Extending a running session into a booking, and open walk-ins, are only warned about in the app, never refused (an offline extension must not be lost).
 - **2026-10-30: Check-in keeps the booked end** as the session's planned end (alerts fire as for fixed sessions; staff add time). An early check-in plays and pays from the actual start.
@@ -212,6 +238,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 - Edge Functions need `.ts` extensions on imports; app code imports without them. Never edit `supabase/functions/_shared/domain` by hand: run `npm run domain:sync`.
 - `eslint-plugin-import` can't see `Notifications.AndroidImportance` (re-exported through a types module); it is disabled for that one line.
 - Jest: variables used inside `jest.mock` factories must be named `mock…`.
+- Jest: test mocks of `useWorkspace` must include `features` (`{ customers, snacks, expenses }`), and any screen that renders `ItemsCard` or `CustomerPicker` needs `jest.mock('@/lib/powersync/database', () => ({ powersync: {} }))` (their write modules import the database).
+- Long inline Python heredocs in the Bash tool sometimes fail with "unexpected EOF while looking for matching `''" (seen with Arabic text and some symbols). Write the script to the scratchpad and run it instead.
 
 - PowerSync tables are SQLite views: `INSERT … RETURNING` isn't available; get an id with `SELECT uuid() AS id` first.
 
@@ -246,7 +274,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 7. Ask the client: may cashiers give small discounts? Is an on-screen/shared receipt enough (open question 4), and what should it show (logo, address, tax number)?
 8. Run the Phase 5 checks (step 7 items 16–17) once the VPS is up. Ask the client which day their week starts on and whether cashiers should see anything beyond their own day.
 9. Run the Phase 6 checks (step 7 items 18–21), try drag/resize on each platform, then the MVP pilot. Ask the client: the no-show grace period, and whether reservations need a deposit or always a phone number.
-10. Phase 7: optional modules (customers can then link to reservations' `customer_name`/`customer_phone`).
+10. Run the Phase 7 checks (step 7 items 22-26) after the migration and a PowerSync restart. Ask the client: their snack/drink list and prices, whether the expense categories fit, whether cashiers may restock, and whether a customer discount should also cover items added at checkout.
+11. Phase 8: advanced reports (net profit = income - expenses, utilization, busiest hours, top customers, snack sales, CSV/PDF export).
 
 ### Open items from Phase 4
 
