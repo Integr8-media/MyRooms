@@ -3,6 +3,8 @@
 #   owner    everything in their organizations
 #   manager  their branches, the staff of those branches, invitations they sent
 #   cashier  their branches and their own membership
+#   everyone station types, rate rules and packages of their organizations (to price sessions),
+#            and the stations of the branches they work in
 config:
   edition: 3
 
@@ -18,10 +20,24 @@ streams:
     auto_subscribe: true
     query: SELECT * FROM organizations WHERE id IN (SELECT org_id FROM memberships WHERE user_id = auth.user_id())
 
-  # Branches the user is assigned to (managers and cashiers).
+  # Prices and station types: every member needs them for live estimates.
+  org_pricing:
+    auto_subscribe: true
+    with:
+      my_orgs: SELECT org_id FROM memberships WHERE user_id = auth.user_id()
+    queries:
+      - SELECT * FROM station_types WHERE org_id IN my_orgs
+      - SELECT * FROM rate_rules WHERE org_id IN my_orgs
+      - SELECT * FROM packages WHERE org_id IN my_orgs
+
+  # Branches the user is assigned to (managers and cashiers), and their stations.
   assigned_branches:
     auto_subscribe: true
-    query: SELECT * FROM branches WHERE id IN (SELECT branch_id FROM member_branches WHERE user_id = auth.user_id())
+    with:
+      my_branches: SELECT branch_id FROM member_branches WHERE user_id = auth.user_id()
+    queries:
+      - SELECT * FROM branches WHERE id IN my_branches
+      - SELECT * FROM stations WHERE branch_id IN my_branches
 
   # Owners: every branch, member and invitation of their organizations.
   owner_data:
@@ -30,6 +46,7 @@ streams:
       owned_orgs: SELECT org_id FROM memberships WHERE user_id = auth.user_id() AND role = 'owner'
     queries:
       - SELECT * FROM branches WHERE org_id IN owned_orgs
+      - SELECT * FROM stations WHERE org_id IN owned_orgs
       - SELECT * FROM memberships WHERE org_id IN owned_orgs
       - SELECT * FROM member_branches WHERE org_id IN owned_orgs
       - SELECT * FROM invitations WHERE org_id IN owned_orgs

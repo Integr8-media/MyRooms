@@ -4,19 +4,35 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Status
 
-| Phase                                   | Status                            | Branch                                        | Notes                                                            |
-| --------------------------------------- | --------------------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
-| 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed) | Web + Windows verified. Android/iOS and online sync not yet run. |
-| 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)    | 59 pgTAP checks pass on PGlite; signed-in screens need a backend |
-| 2 Stations and pricing                  | Not started                       |                                               |                                                                  |
-| 3 Live floor and walk-ins               | Not started                       |                                               |                                                                  |
-| 4 Checkout and payments                 | Not started                       |                                               |                                                                  |
-| 5 Income dashboard                      | Not started                       |                                               |                                                                  |
-| 6 Calendar and reservations (MVP pilot) | Not started                       |                                               |                                                                  |
-| 7 Optional modules                      | Not started                       |                                               |                                                                  |
-| 8 Advanced reports                      | Not started                       |                                               |                                                                  |
-| 9 Offline hardening                     | Not started                       |                                               |                                                                  |
-| 10 Release                              | Not started                       |                                               |                                                                  |
+| Phase                                   | Status                            | Branch                                             | Notes                                                                       |
+| --------------------------------------- | --------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
+| 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed)      | Web + Windows verified. Android/iOS and online sync not yet run.            |
+| 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)         | 59 pgTAP checks pass on PGlite; signed-in screens need a backend            |
+| 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed) | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
+| 3 Live floor and walk-ins               | Not started                       |                                                    |                                                                             |
+| 4 Checkout and payments                 | Not started                       |                                                    |                                                                             |
+| 5 Income dashboard                      | Not started                       |                                                    |                                                                             |
+| 6 Calendar and reservations (MVP pilot) | Not started                       |                                                    |                                                                             |
+| 7 Optional modules                      | Not started                       |                                                    |                                                                             |
+| 8 Advanced reports                      | Not started                       |                                                    |                                                                             |
+| 9 Offline hardening                     | Not started                       |                                                    |                                                                             |
+| 10 Release                              | Not started                       |                                                    |                                                                             |
+
+## Phase 2: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261030100000_phase2_stations_pricing.sql`): `station_types` (kind `pc_desk`/`ps_room`, color, max players), `stations` (per branch, status `active`/`maintenance`, `is_active` to remove), `rate_rules` (price per hour in piasters, players min/max, `days_of_week` bit mask with bit 0 = Sunday, `from_minute`/`to_minute` minutes after local midnight, priority, `valid_from`/`valid_to` dates), `packages` (minutes + fixed price), and `audit_log` (written by triggers on station types, rate rules and packages; owners read it; not synced).
+- **Access:** prices and station types: every member reads, owners write. Stations: branch staff read, owners and the branch's managers write (incl. maintenance). Triggers copy `org_id` from the branch / station type, and reject a station type from another org (`invalid_station_type`). Only rate rules can be deleted; the rest are switched off.
+- **Sync streams:** `org_pricing` (types, rules, packages for every org the user belongs to), stations added to `assigned_branches` and `owner_data`.
+- **Pricing engine** `src/domain/pricing.ts` + `src/domain/zoned-time.ts`: segments → cut at local midnight, every rule edge and DST changes → best rule per piece (priority, then specificity, then id) → per-minute charge rounded per bill line → package covers the first N minutes (full price even if shorter) → items and discount. Time not covered by any rule is charged 0 and reported in `uncovered` (the UI warns).
+- **App:** Settings → Station types & prices (type form, rate rules list and editor, packages), Settings → Stations (current branch, add several at once with numbering, maintenance, remove), Settings → Price preview (type, players, start/end date+time, package → line-by-line breakdown). Cashiers see prices read-only and the preview; managers edit stations in their branches.
+
+**Verified:** lint, format, typecheck, 93 Jest tests (pricing edge cases: crossing midnight, peak boundary, weekend switch, overnight window belonging to its start day, player change mid-session, packages + overtime and across a player change, priority/specificity ties, date-limited rules, both Cairo DST changes; plus validation and a price-preview screen test), web export builds. Migrations + 100 pgTAP checks (59 Phase 1 + 41 Phase 2) pass on PGlite, and weakening two policies makes 3 checks fail. Sync config validates.
+**Not verified:** the new screens in a browser (they need a signed-in backend), Arabic layout of the new screens, the real pgTAP run, and setting up the client's real center (Phase 2 "done when").
+
+### Phase 2 "done when" still open
+
+- [ ] On the VPS: the owner sets up the client's real station types, prices, packages and stations (deploy guide step 7, items 5–6).
+- [ ] Price preview matches the client's own hand-calculated examples. Ask the client for 3–4 real bills to check against.
 
 ## Phase 1: what was built (2026-10-30)
 
@@ -62,6 +78,14 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Rate rule times are integers** (minutes after local midnight, `to_minute` up to 1440), not Postgres `time`: simpler checks and the same values on the device and the server. A window with end ≤ start runs past midnight and belongs to the day it starts (days mask and valid dates are checked against that day).
+- **2026-10-30: Rule choice:** highest priority wins; on a tie the more specific rule (players, time window, days, dates), then the lowest id, so results never depend on order. The UI suggests priority 0 for the first (base) rule and 10 for later ones.
+- **2026-10-30: Prices are per station per hour** (the whole room, not per player); player-count pricing is done with player ranges on rules.
+- **2026-10-30: Billing uses exact elapsed time** (per minute, with seconds as a fraction), rounded to the piaster per bill line. Rounding/minimum charge is still open question 1 for the client.
+- **2026-10-30: Packages** cover the first N minutes of the session from its start (across player changes) and cost their full price even if the session is shorter. Overtime is billed at the rate in force when the package runs out.
+- **2026-10-30: No date-fns-tz.** Time zones use `Intl` in `src/domain/zoned-time.ts` (Hermes and Node both support it); Cairo's DST (switches at midnight) is covered by tests.
+- **2026-10-30: Stations can be edited by branch managers** (incl. maintenance); station types, prices and packages only by owners. Cashiers can't toggle maintenance.
+
 - **2026-10-30: Branch assignments are a `member_branches` table**, not `memberships.branch_ids[]` as in the first data model draft: simpler RLS and PowerSync streams. Invitations keep `branch_ids uuid[]` (only read by the server).
 - **2026-10-30: No `profiles` table.** Name and email are copied onto `memberships` by triggers (name = `full_name` in the user's metadata), so staff lists work offline.
 - **2026-10-30: Managers** see and edit only their assigned branches, can invite and assign **cashiers** to those branches, and see the staff of those branches. Only owners create branches, change roles, remove members and change org settings. An org always keeps one owner (`last_owner` trigger), and owners can't demote themselves.
@@ -79,6 +103,9 @@ Running log of progress, decisions and open items. Update it at the end of every
 - **2026-10-29: Web export mode is `single`** (SPA), which works for both Caddy and Tauri.
 
 ## Environment quirks (dev PC)
+
+- **PGlite harness location:** copied into each session's scratchpad (`pgcheck/run.mjs <repo>`, `stub.sql`, `tap.sql`, `validate-sync.mjs`); the original is in the scratchpad of session `589f6d80-…`. Consider moving it into the repo (e.g. `scripts/pgcheck/`) if it keeps being needed.
+- PowerSync tables are SQLite views: `INSERT … RETURNING` isn't available; get an id with `SELECT uuid() AS id` first.
 
 - **Testing SQL without Docker:** run the migrations and pgTAP files in PGlite (`@electric-sql/pglite`) with a stand-in for Supabase (roles `anon`/`authenticated`, `auth.users`, `auth.uid()`/`auth.jwt()`, default grants) and a tiny pgTAP subset (plan/ok/is/is_empty/results_eq/lives_ok/throws_ok). PGlite has no pgTAP extension. The harness lived in the session scratchpad, not the repo.
 - **Validating sync streams:** `@powersync/service-sync-rules` (`SqlSyncRules.validate(yaml, { defaultSchema: 'public' })`); needs `node --js-explicit-resource-management` on Node 22 (or bun).
@@ -105,4 +132,5 @@ Running log of progress, decisions and open items. Update it at the end of every
 1. User: provide the domain and SMTP details, then run deploy steps 1 to 7b on the VPS (or give access). Set `ENABLE_ANONYMOUS_USERS=false`, `ENABLE_EMAIL_AUTOCONFIRM=false` and `ADDITIONAL_REDIRECT_URLS`.
 2. Run the step 7 checklist with three accounts (owner, manager, cashier) on web, Windows and a phone. This also closes Phase 0's "offline write syncs" item.
 3. Push the branch so CI runs the pgTAP tests on real Supabase.
-4. Phase 2: station types, stations, rate rules, packages, pricing module. Use `private.is_org_owner` for prices and `private.can_manage_branch` for stations.
+4. Ask the client for their real price list (types, hourly prices, peak/weekend rules, packages) and a few real bills, to enter and check in Phase 2's price preview.
+5. Phase 3: live floor and walk-in sessions (`sessions`, `session_segments`). Build segments that feed `priceSession` directly; maintenance stations can't be started.

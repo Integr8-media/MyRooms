@@ -27,7 +27,7 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 ```
 src/app/        routes only (Expo Router)
 src/features/   feature UI, one folder per feature
-src/domain/     pure business logic (money, pricing…), no React, heavily unit-tested
+src/domain/     pure business logic (money, pricing, zoned time, permissions, validation), no React, heavily unit-tested
 src/lib/        infrastructure: config, i18n, settings, supabase, powersync
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl)
 supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions), config.toml (local CLI)
@@ -38,12 +38,13 @@ src-tauri/      Windows shell
 ## Rules
 
 - **Money:** always integer piasters (`src/domain/money.ts`). Never floats.
+- **Pricing:** `src/domain/pricing.ts` is the only place prices are calculated (live estimates now, the server's final bill in Phase 4). Keep it pure with relative imports so the server can reuse it. Times go through `src/domain/zoned-time.ts` (org time zone, DST-safe, `Intl` only); never add hours with plain arithmetic on wall-clock times.
 - **RTL:** use start/end (`ps-`, `pe-`, `ms-`, `me-`, `text-start`), never left/right. Check every new screen in Arabic.
 - **Text:** every user-facing string goes through i18n, with keys added to **both** `en.json` and `ar.json` (a test enforces matching keys). Use the `Text` component from `@/ui`, not RN `Text`.
 - **Dependencies:** add with `npx expo install <pkg>` so versions match SDK 58. For dev deps: `npx expo install -- --save-dev <pkg>`. Run with `CI=1`, or it can hang on a prompt.
 - **Database:** every schema change is a new file in `supabase/migrations/`. Every table gets RLS policies plus pgTAP tests, and must be added to the `powersync` publication and to `deploy/powersync/sync-config.yaml` (Sync Streams, edition 3) if devices need it. The final bill is computed server-side.
 - **Access rules:** build policies from the `private.*` helpers (`is_org_owner`, `can_manage_branch`, `can_access_branch`). Revoke the default grants and grant only the columns clients may write. Keep `src/domain/permissions.ts` (what the UI shows) and the sync streams in step with the SQL rules.
-- **Local writes** go through PowerSync (`powersync.execute`); never set `created_at`/`updated_at` in an UPDATE. Online-only actions (create org, invite, accept) are RPCs. Database functions raise error keys, translated via `src/lib/errors.ts` and `errors.*` in the locales.
+- **Local writes** go through PowerSync (`powersync.execute`); never set `created_at`/`updated_at` in an UPDATE. PowerSync tables are views, so `INSERT … RETURNING` doesn't work: get an id first with `SELECT uuid() AS id`. Money changes (prices, later bills and payments) are recorded in `audit_log` by triggers. Online-only actions (create org, invite, accept) are RPCs. Database functions raise error keys, translated via `src/lib/errors.ts` and `errors.*` in the locales.
 - **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app).
 - **Git:** never commit, push or open PRs unless the user explicitly asks in that session. Work on a feature branch off `dev`.
 

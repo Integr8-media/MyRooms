@@ -1,4 +1,4 @@
-import { assertPiasters, chargeForMinutes, formatMoney, parsePounds } from './money';
+import { assertPiasters, chargeForMinutes, formatMoney, parsePounds, toPoundsInput } from './money';
 
 describe('parsePounds', () => {
   it.each([
@@ -51,5 +51,14 @@ describe('assertPiasters', () => {
 describe('formatMoney', () => {
   it('formats piasters as EGP', () => {
     expect(formatMoney(1250, 'en')).toContain('12.50');
+  });
+});
+
+describe('toPoundsInput', () => {
+  it('turns piasters back into what a person would type', () => {
+    expect(toPoundsInput(6000)).toBe('60');
+    expect(toPoundsInput(6250)).toBe('62.50');
+    expect(toPoundsInput(5)).toBe('0.05');
+    expect(parsePounds(toPoundsInput(123456))).toBe(123456);
   });
 });

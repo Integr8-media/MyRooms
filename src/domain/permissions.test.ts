@@ -16,6 +16,13 @@ describe('permissions', () => {
     expect(can('manager', 'income.view')).toBe(true);
   });
 
+  it('owners and managers set up stations; only owners set prices', () => {
+    expect(can('owner', 'stations.edit')).toBe(true);
+    expect(can('manager', 'stations.edit')).toBe(true);
+    expect(can('cashier', 'stations.edit')).toBe(false);
+    expect(can('manager', 'prices.edit')).toBe(false);
+  });
+
   it('no role means no permissions', () => {
     expect(can(null, 'staff.view')).toBe(false);
     expect(can(undefined, 'branches.edit')).toBe(false);

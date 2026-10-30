@@ -20,8 +20,11 @@ const RULES = {
   'staff.invite': ['owner', 'manager'],
   'staff.changeRole': ['owner'],
   'staff.remove': ['owner'],
-  // Used from Phase 2 / 5 onwards.
+  /** Station types, rate rules and hour packages. */
   'prices.edit': ['owner'],
+  /** Add/edit stations and switch maintenance on/off. Managers: only their branches. */
+  'stations.edit': ['owner', 'manager'],
+  // Used from Phase 5 onwards.
   'income.view': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;
 
