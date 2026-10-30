@@ -4,19 +4,36 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Status
 
-| Phase                                   | Status                            | Branch                                             | Notes                                                                       |
-| --------------------------------------- | --------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed)      | Web + Windows verified. Android/iOS and online sync not yet run.            |
-| 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)         | 59 pgTAP checks pass on PGlite; signed-in screens need a backend            |
-| 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed) | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
-| 3 Live floor and walk-ins               | **Code done, VPS test pending**   | `feature/phase-3-sessions` (not committed)         | 158 pgTAP checks pass on PGlite; 116 Jest tests                             |
-| 4 Checkout and payments                 | **Code done, VPS test pending**   | `feature/phase-4-billing` (not committed)          | 212 pgTAP checks pass on PGlite; 144 Jest tests                             |
-| 5 Income dashboard                      | **Code done, VPS test pending**   | `feature/phase-5-income-dashboard` (not committed) | No server changes; 170 Jest tests                                           |
-| 6 Calendar and reservations (MVP pilot) | Not started                       |                                                    |                                                                             |
-| 7 Optional modules                      | Not started                       |                                                    |                                                                             |
-| 8 Advanced reports                      | Not started                       |                                                    |                                                                             |
-| 9 Offline hardening                     | Not started                       |                                                    |                                                                             |
-| 10 Release                              | Not started                       |                                                    |                                                                             |
+| Phase                                   | Status                            | Branch                                                  | Notes                                                                       |
+| --------------------------------------- | --------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 0 Foundations                           | **Code done, VPS deploy pending** | `feature/phase-0-foundations` (not committed)           | Web + Windows verified. Android/iOS and online sync not yet run.            |
+| 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)              | 59 pgTAP checks pass on PGlite; signed-in screens need a backend            |
+| 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed)      | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
+| 3 Live floor and walk-ins               | **Code done, VPS test pending**   | `feature/phase-3-sessions` (not committed)              | 158 pgTAP checks pass on PGlite; 116 Jest tests                             |
+| 4 Checkout and payments                 | **Code done, VPS test pending**   | `feature/phase-4-billing` (not committed)               | 212 pgTAP checks pass on PGlite; 144 Jest tests                             |
+| 5 Income dashboard                      | **Code done, VPS test pending**   | `feature/phase-5-income-dashboard` (not committed)      | No server changes; 170 Jest tests                                           |
+| 6 Calendar and reservations (MVP pilot) | **Code done, VPS test pending**   | `feature/phase-6-calendar-reservations` (not committed) | 256 pgTAP checks pass on PGlite; 207 Jest tests                             |
+| 7 Optional modules                      | Not started                       |                                                         |                                                                             |
+| 8 Advanced reports                      | Not started                       |                                                         |                                                                             |
+| 9 Offline hardening                     | Not started                       |                                                         |                                                                             |
+| 10 Release                              | Not started                       |                                                         |                                                                             |
+
+## Phase 6: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261102000000_phase6_reservations.sql`): reservations are rows in `sessions` (`kind = 'reservation'`, `status = 'reserved'`, booked `[scheduled_start, scheduled_end)`), with new columns `players` (planned), `customer_name`, `customer_phone`. `btree_gist` + exclusion constraint `sessions_no_double_booking` (station, time range) on reserved rows: the final judge when two offline devices book the same slot (23P01). `private.check_booking` also refuses a booking that overlaps another reservation or an active session's planned end (`booking_conflict`, 23P01); open walk-ins don't block. Rules in `check_session`: maintenance stations can't be booked; check-in (reserved→active) needs an in-service, free station (unique index → 23505); no-show only 15 min after the start (`too_early`); any branch staff cancels a reservation (still audited by the Phase 3 trigger), only managers/owners cancel a running session; `scheduled_start`/`players` change only while reserved; `actual_start` is set only at check-in. No sync-config change (`SELECT *` picks up the columns).
+- **Domain** `src/domain/reservations.ts` (not copied to the server): `bookingFromRow`, `findConflict` (same rule as SQL), `overlappingIds` (offline overlaps to flag), reservation states (upcoming / soon −30 min / due / late after 15 min grace / over), `nextReservation`, `isReservedSoon`, `runsIntoReservation`, DST-safe day windows (`dayWindow`, `hourMarks`: 23/25-hour days), `weekDates`, `slotAt`, `dragRange` (15-min snap, 15 min–24 h), `reservationRange`/`rangeToForm`.
+- **App:** `/calendar` (`src/features/calendar/`): day timeline (stations as rows, sideways-scrolling 24 h, now line, tap an empty slot → new reservation at that 15-min slot, tap a reservation to select it then drag to move (time + station) or drag the end handle to resize; a second tap or "Open" opens it), week view on screens ≥ 900 px (7 day strips per station; tap a day to open it), PC/PS filter, legend, red border + notice for overlapping bookings. `/reservations/new` (book, or `?id=` to edit; station chips, date, start time, length, players, name, phone, note, live conflict check, price estimate) and `/reservations/[id]` (check in, check in on another free station, no-show after the grace, edit, cancel with inline confirm). Floor: **Reserved soon** card status (`reserved` theme colour), "Reserved 18:00 Name" on cards (red on a running session that would run into it), **Arrivals** list (next 2 h + late ones), Calendar button. The start screen warns when a walk-in would run into the next reservation; the session screen shows the customer, lets checked-in reservations add time, and warns about a clash.
+- **Conflict UI:** the connector now records every refused upload in the local-only table `upload_rejections` (table, op, row, full row data, error key) before dropping it. `RejectedChanges` (floor + calendar) lists them ("Reservation not saved", "Walk-in session not saved", …) with the reason, **Book again** (prefilled form; the entry is removed once saved) and **Dismiss**. 23P01 → `booking_conflict`, 23505 on sessions → `station_busy`.
+- Permission `reservations.manage` (all roles). New theme colour `--color-reserved`.
+
+**Verified:** lint, format, typecheck, 207 Jest tests (20 reservation domain tests incl. Cairo's 23-hour day and a booking across a DST change; calendar day view, tap-to-book slot snapping, select → open, day stepping, overlap warning; form booking/conflict/edit/redo; detail check-in, check-in elsewhere, no-show grace, cancel; floor reserved-soon + arrivals; start-screen clash warning; "Not saved" list; connector records rejections and keeps temporary failures queued). 7 migrations + 256 pgTAP checks pass on PGlite (44 new; the constraint alone is tested with the trigger disabled; weakened rules make tests fail). Web export builds.
+**Not verified:** anything signed in (no backend), dragging with a real mouse/finger (PanResponder inside scroll views) on web, Windows and phones, the sideways-scroll start position in Arabic on phones, the screens in Arabic and on a phone, the real pgTAP run.
+
+### Phase 6 "done when" still open
+
+- [ ] On the VPS: step 7 items 18–21, including two devices booking the same slot offline.
+- [ ] Try drag/resize on web (mouse), Windows (WebView2) and a phone; check the timeline in Arabic (time runs right to left).
+- [ ] MVP pilot at the client's center.
 
 ## Phase 5: what was built (2026-10-30)
 
@@ -132,6 +149,13 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Reservations live in `sessions`** (kind `reservation`), not a separate table: check-in is a status change; billing, alerts and sync work unchanged; bill id = session id still holds.
+- **2026-10-30: The constraint blocks double booking between reservations only**; a booking that overlaps a walk-in's planned end is refused by the trigger (point-in-time check). Extending a running session into a booking, and open walk-ins, are only warned about in the app, never refused (an offline extension must not be lost).
+- **2026-10-30: Check-in keeps the booked end** as the session's planned end (alerts fire as for fixed sessions; staff add time). An early check-in plays and pays from the actual start.
+- **2026-10-30: No-show grace is 15 minutes, "reserved soon" 30 minutes** (`NO_SHOW_GRACE_MS` must match the SQL). Not automatic: staff mark no-shows. Ask the client for their grace period.
+- **2026-10-30: Any staff member books, moves, cancels and checks in reservations**; cancellations are still written to `audit_log`.
+- **2026-10-30: Refused uploads are kept per device** (`upload_rejections`, local-only, cleared on sign-out), not synced: the device that lost the race is the one that must tell the customer.
+
 - **2026-10-30: Income reports run on the device** from synced payments, not server views: works offline, no new server code. Revisit in Phase 8/9 if history gets too big to sync (see the Phase 3 open item) — then move reports to server-side RPCs.
 - **2026-10-30: Income is counted when the money changes hands** (`paid_at`, device time, org time zone), refunds on their own day; payments on void bills never count.
 - **2026-10-30: Weeks start on Saturday** (`DEFAULT_WEEK_START`). Ask the client; it's one constant.
@@ -177,6 +201,11 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Environment quirks (dev PC)
 
+- The PGlite harness loads `btree_gist` from `@electric-sql/pglite/contrib/btree_gist`, and `stub.sql` creates the `extensions` schema.
+- React Compiler lint rejects refs and mutated `useState` values passed to `PanResponder.create`; `BookingBlock` keeps the responder in a small class (`DragController`) updated through a method in `useLayoutEffect`.
+- Jest can't load `@powersync/common` (ESM): mock it (`UpdateType` only) in tests that import the connector.
+- The logical `start` style works for absolute positions on native and react-native-web (RNW maps it to left/right by direction).
+
 - `payments.paid_at` on the device is ISO text for local rows but Postgres text (`2026-01-05 12:00:00+00`) after sync, so text comparisons are unreliable. Both start with the UTC date: pre-filter with `substr(paid_at, 1, 10) BETWEEN` (`utcDateWindow`, one day wider each side) and do the exact check after `parseTimestamp`.
 - Python on Windows writes CRLF in text mode: open files with `newline=''` when editing them from scripts.
 - **PGlite harness is in the repo** (`scripts/pgcheck/`, `npm run db:check`). Its `tap.sql` used to `grant execute on all functions in schema public to public`, which silently re-opened locked-down functions like `create_bill`; it now grants only the test helpers.
@@ -216,7 +245,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 6. Deploy `create-bill` with the other Edge Functions (step 7b) **before** staff end sessions, then run step 7 items 11–15.
 7. Ask the client: may cashiers give small discounts? Is an on-screen/shared receipt enough (open question 4), and what should it show (logo, address, tax number)?
 8. Run the Phase 5 checks (step 7 items 16–17) once the VPS is up. Ask the client which day their week starts on and whether cashiers should see anything beyond their own day.
-9. Phase 6: calendar and reservations (MVP pilot).
+9. Run the Phase 6 checks (step 7 items 18–21), try drag/resize on each platform, then the MVP pilot. Ask the client: the no-show grace period, and whether reservations need a deposit or always a phone number.
+10. Phase 7: optional modules (customers can then link to reservations' `customer_name`/`customer_phone`).
 
 ### Open items from Phase 4
 

@@ -6,11 +6,13 @@ import { View } from 'react-native';
 
 import { formatMoney } from '@/domain/money';
 import { findRule, priceSession } from '@/domain/pricing';
+import { nextReservation, runsIntoReservation } from '@/domain/reservations';
 import { DURATION_CHOICES, plannedEnd, type SessionKind } from '@/domain/sessions';
 import { sessionMinutesField, sessionNoteSchema, validate } from '@/domain/validation';
 import { dateKey, formatClock, minuteOfDay, toLocal } from '@/domain/zoned-time';
 import { ErrorNotice } from '@/features/common/ErrorNotice';
 import { formatDuration, formatPerHour } from '@/features/pricing/format';
+import { clockAt, useReserved } from '@/features/reservations/data';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import type { PackageRow } from '@/lib/powersync/schema';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -70,6 +72,7 @@ export function StartSessionScreen() {
     [station?.station_type_id ?? null],
   );
   const { rules } = useOrgPricing(org?.id);
+  const reserved = useReserved(branch?.id);
 
   const [kind, setKind] = useState<SessionKind>('open');
   const [players, setPlayers] = useState(1);
@@ -129,6 +132,11 @@ export function StartSessionScreen() {
       : null;
   const endsAt = minutes != null ? toLocal(plannedEnd(now, minutes), timeZone) : null;
 
+  // Walk-ins must not block an upcoming reservation on this station.
+  const next = nextReservation(reserved, station.id, now);
+  const clash =
+    next && runsIntoReservation(minutes != null ? plannedEnd(now, minutes) : null, next, now);
+
   const unavailable = station.status !== 'active' || !station.is_active;
   const wrongBranch = station.branch_id !== branch?.id;
   const canStart =
@@ -179,6 +187,16 @@ export function StartSessionScreen() {
       ) : null}
       {unavailable ? <Notice tone="warning" message={t('errors.station_unavailable')} /> : null}
       {wrongBranch ? <Notice tone="warning" message={t('errors.invalid_station')} /> : null}
+      {next ? (
+        <Notice
+          tone={clash ? 'danger' : 'info'}
+          message={t(clash ? 'sessions.reservationClash' : 'sessions.nextReservation', {
+            time: clockAt(next.start, timeZone),
+            name: next.customer_name ?? '',
+          })}
+          testID="next-reservation"
+        />
+      ) : null}
 
       <Card className="gap-4">
         <SegmentedControl<SessionKind>

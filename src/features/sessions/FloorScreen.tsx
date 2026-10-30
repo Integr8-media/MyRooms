@@ -2,8 +2,12 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useWindowDimensions, View } from 'react-native';
 
-import { floorStatus, type FloorStatus } from '@/domain/sessions';
+import { isReservedSoon, nextReservation, runsIntoReservation } from '@/domain/reservations';
+import { floorStatus } from '@/domain/sessions';
 import { UnpaidList } from '@/features/checkout/UnpaidList';
+import { ArrivalsList } from '@/features/reservations/ArrivalsList';
+import { clockAt, useReserved } from '@/features/reservations/data';
+import { RejectedChanges } from '@/features/sync/RejectedChanges';
 import { SyncStatusCard } from '@/features/sync/SyncStatusCard';
 import { BranchSwitcher } from '@/features/workspace/BranchSwitcher';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
@@ -18,11 +22,19 @@ import {
   useNow,
   useOrgPricing,
 } from './data';
-import { StationCard } from './StationCard';
+import { StationCard, type CardStatus } from './StationCard';
 
-const SUMMARY: FloorStatus[] = ['free', 'active', 'ending_soon', 'overtime', 'maintenance'];
+const SUMMARY: CardStatus[] = [
+  'free',
+  'reserved_soon',
+  'active',
+  'ending_soon',
+  'overtime',
+  'maintenance',
+];
 const SUMMARY_TONE = {
   free: 'success',
+  reserved_soon: 'reserved',
   active: 'primary',
   ending_soon: 'warning',
   overtime: 'danger',
@@ -40,6 +52,7 @@ export function FloorScreen() {
   const floor = useFloor(branch?.id);
   const segments = useActiveSegments(branch?.id);
   const { rules, packages } = useOrgPricing(org?.id);
+  const reserved = useReserved(branch?.id);
 
   const bySession = new Map<string, SessionSegmentRow[]>();
   for (const g of segments) {
@@ -52,10 +65,26 @@ export function FloorScreen() {
     const sessionSegments = row.session_id ? (bySession.get(row.session_id) ?? []) : [];
     const running = sessionSegments.find((g) => !g.ended_at);
     const pkg = row.package_id ? (packages.get(row.package_id) ?? null) : null;
+    const base = floorStatus(row, timing, now);
+    const next = nextReservation(reserved, row.id, now);
+    const soon = base === 'free' && isReservedSoon(next, now);
+    // Running sessions and free stations show the next booking so walk-ins don't block it.
+    const showNext =
+      next && (soon || (timing && runsIntoReservation(timing.scheduledEnd, next, now)));
     return {
       row,
       timing,
-      status: floorStatus(row, timing, now),
+      next,
+      status: (soon ? 'reserved_soon' : base) as CardStatus,
+      reservation: showNext
+        ? {
+            label: t('floor.reservedAt', {
+              time: clockAt(next.start, timeZone),
+              name: next.customer_name ?? '',
+            }),
+            warn: !!timing,
+          }
+        : null,
       players: running?.players ?? null,
       estimate: timing
         ? (estimateSession(sessionSegments, rules, pkg, timeZone, now)?.total ?? null)
@@ -63,7 +92,7 @@ export function FloorScreen() {
     };
   });
 
-  const counts = new Map<FloorStatus, number>();
+  const counts = new Map<CardStatus, number>();
   for (const c of cards) counts.set(c.status, (counts.get(c.status) ?? 0) + 1);
 
   // Card columns: about 190 px each, at least 2.
@@ -75,6 +104,10 @@ export function FloorScreen() {
     if (card.row.session_id) {
       return () =>
         router.push({ pathname: '/sessions/[id]', params: { id: card.row.session_id! } });
+    }
+    if (card.status === 'reserved_soon' && card.next) {
+      const id = card.next.id;
+      return () => router.push({ pathname: '/reservations/[id]', params: { id } });
     }
     if (card.status === 'free' && can('sessions.run')) {
       return () => router.push({ pathname: '/sessions/start', params: { stationId: card.row.id } });
@@ -96,6 +129,12 @@ export function FloorScreen() {
           </Text>
         </View>
         <Button
+          label={t('calendar.title')}
+          variant="secondary"
+          onPress={() => router.push('/calendar')}
+          testID="open-calendar"
+        />
+        <Button
           label={can('income.view') ? t('income.title') : t('income.myShift')}
           variant="secondary"
           onPress={() => router.push('/income')}
@@ -110,6 +149,7 @@ export function FloorScreen() {
       </View>
 
       <BranchSwitcher />
+      <RejectedChanges />
 
       {!branch ? <Notice tone="warning" message={t('home.noBranch')} /> : null}
 
@@ -152,6 +192,7 @@ export function FloorScreen() {
                 typeName={card.row.type_name}
                 color={card.row.type_color}
                 status={card.status}
+                reservation={card.reservation}
                 timing={card.timing}
                 players={card.players}
                 estimate={card.estimate}
@@ -166,6 +207,8 @@ export function FloorScreen() {
           </View>
         ))}
       </View>
+
+      <ArrivalsList reserved={reserved} now={now} />
 
       <UnpaidList branchId={branch?.id} />
 

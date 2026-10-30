@@ -9,7 +9,8 @@
     "saved": "Saved.",
     "working": "Please wait…",
     "cancel": "Cancel",
-    "off": "Off"
+    "off": "Off",
+    "done": "Done"
   },
   "auth": {
     "notConfigured": "The server is not configured, so you can't sign in yet. See README to connect Supabase and PowerSync.",
@@ -93,7 +94,9 @@
     "bill_has_payments": "A discount can only be given before any payment is taken. Refund first.",
     "invalid_discount": "The discount must be between 0 and the bill total.",
     "invalid_amount": "Enter an amount more than 0 and no more than what is due.",
-    "reason_required": "Please enter a reason."
+    "reason_required": "Please enter a reason.",
+    "booking_conflict": "This station is already booked for that time.",
+    "too_early": "Too early: wait until the grace period after the start has passed."
   },
   "roles": {
     "owner": "Owner",
@@ -330,14 +333,17 @@
       "active": "Playing",
       "ending_soon": "Ending soon",
       "overtime": "Over time",
-      "maintenance": "Maintenance"
+      "maintenance": "Maintenance",
+      "reserved_soon": "Reserved soon"
     },
     "elapsed": "Played",
     "left": "Left",
     "overBy": "Over by",
     "players": "Players: {{count}}",
     "tapToStart": "Tap to start a session",
-    "outOfService": "Out of service"
+    "outOfService": "Out of service",
+    "tapToCheckIn": "Tap to check the customer in",
+    "reservedAt": "Reserved {{time}} {{name}}"
   },
   "sessions": {
     "title": "Session",
@@ -348,7 +354,8 @@
     "openSession": "Open the session",
     "kind": {
       "open": "Open",
-      "fixed": "Fixed time"
+      "fixed": "Fixed time",
+      "reservation": "Reservation"
     },
     "kindHint": {
       "open": "The timer runs until you end it. The customer pays for the time played.",
@@ -398,7 +405,9 @@
     "estimatedBill": "Estimated bill",
     "history": "Changes during the session",
     "now": "now",
-    "backToFloor": "Back to the floor"
+    "backToFloor": "Back to the floor",
+    "nextReservation": "Next reservation on this station: {{time}} {{name}}",
+    "reservationClash": "Reserved at {{time}} {{name}}. This session must end before then, or move the customer."
   },
   "alerts": {
     "ending_soon": "{{station}}: 5 minutes left",
@@ -521,5 +530,83 @@
     "refunds": "Refunds: {{count}} · given back {{amount}}",
     "myPayments": "My payments today ({{count}})",
     "howCounted": "Income is the money received minus refunds, on the day it changed hands. Void bills don't count. Payments taken offline on other devices appear once they sync."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "bookStation": "Book {{station}}",
+    "reservation": "Reservation",
+    "walkIn": "Walk-in",
+    "blockStatus": {
+      "reserved": "Reserved",
+      "active": "Playing",
+      "completed": "Played",
+      "no_show": "No-show"
+    },
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "day": "Day",
+    "week": "Week",
+    "allStations": "All",
+    "overlapWarning": "Some bookings overlap (red border). They were made on two devices while offline; the server will keep only one. Move one of them.",
+    "dayHint": "Tap an empty time to book it. Tap a reservation to select it, then drag it to another time or station, or drag its end to change the length. Tap it again to open it.",
+    "dayHintReadOnly": "Tap a booking to open it.",
+    "selected": "Selected: {{name}}, {{time}}",
+    "open": "Open"
+  },
+  "reservations": {
+    "title": "Reservation",
+    "new": "New reservation",
+    "edit": "Edit reservation",
+    "cantEdit": "Only reservations that have not started can be edited.",
+    "notFound": "This reservation was not found. It may have been removed when the devices synced.",
+    "station": "Station",
+    "date": "Date",
+    "time": "Start time",
+    "length": "Length",
+    "customerName": "Customer name",
+    "customerPhone": "Phone (optional)",
+    "note": "Note (optional)",
+    "book": "Book",
+    "conflict": "This station is already booked {{time}}. Pick another time or station.",
+    "openSessionWarning": "An open session is running on this station now. Make sure it ends before the reservation.",
+    "inPast": "This time is already over.",
+    "state": {
+      "upcoming": "Upcoming",
+      "soon": "Soon",
+      "due": "Waiting",
+      "late": "Late",
+      "over": "Time over"
+    },
+    "arrivals": "Arrivals",
+    "checkIn": "Check in",
+    "checkInHint": "Starts the timer now. The session ends at the booked time; you can add time later.",
+    "checkInNow": "Check in now",
+    "checkInElsewhere": "Check in on another station",
+    "stationBusy": "The booked station is still in use. End or move that session, or check the customer in on another station.",
+    "timeOver": "The booked time is over. Cancel it or mark it as a no-show.",
+    "markNoShow": "Mark as no-show",
+    "noShowFrom": "Can be marked as no-show from {{time}}.",
+    "noShowNotice": "The customer didn't come.",
+    "cancelledNotice": "This reservation was cancelled.",
+    "cancel": "Cancel reservation",
+    "confirmCancel": "Cancel this reservation?",
+    "cancelNow": "Cancel reservation",
+    "keep": "Keep it"
+  },
+  "conflicts": {
+    "title": "Not saved ({{count}})",
+    "hint": "The server refused these changes made on this device, usually because another device got there first. Redo them if needed.",
+    "kind": {
+      "reservation_new": "Reservation not saved",
+      "reservation_change": "Reservation change not saved",
+      "walk_in": "Walk-in session not saved",
+      "session_change": "Session change not saved",
+      "other": "A change was not saved"
+    },
+    "reason": "Reason: {{reason}}",
+    "bookAgain": "Book again",
+    "dismiss": "Dismiss",
+    "dismissAll": "Dismiss all"
   }
 }

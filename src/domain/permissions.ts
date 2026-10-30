@@ -26,7 +26,12 @@ const RULES = {
   'stations.edit': ['owner', 'manager'],
   /** Start, extend, change players, move and end walk-in sessions in the user's branches. */
   'sessions.run': ['owner', 'manager', 'cashier'],
-  /** Cancel a session so it is never billed. Audited. Managers: only their branches. */
+  /**
+   * Book, move, resize, edit and cancel reservations, check customers in and mark no-shows,
+   * in the user's branches. Cancellations are recorded in the audit log, like other cancels.
+   */
+  'reservations.manage': ['owner', 'manager', 'cashier'],
+  /** Cancel a running session so it is never billed. Audited. Managers: only their branches. */
   'sessions.cancel': ['owner', 'manager'],
   /** Check out ended sessions and take payments (split across methods allowed). */
   'bills.pay': ['owner', 'manager', 'cashier'],

@@ -142,6 +142,13 @@ Income (Phase 5) needs no new server parts: it is worked out on each device from
 16. As the owner, tap **Income** on the floor: **Today** shows the total, the split by Cash / Visa / Instapay, by branch (with 2+ branches) and by station type, matching the payments in Studio → `payments` (refunds subtracted, void bills left out). Try **This week**, **This month** and a **Custom** range, and pick one branch.
 17. As the cashier, tap **My shift**: only the payments they took themselves today, by method, with each payment listed. No other periods or branches. As a manager, only their branches show.
 
+Reservations (Phase 6) need only the new migration (step 5; it turns on the `btree_gist` extension, which self-hosted Supabase ships). No new sync stream, setting or Edge Function:
+
+18. As the cashier, tap **Calendar** on the floor, tap an empty slot on a station at a time later today, enter a name and **Book**. The block appears on the calendar, and in Studio → `sessions` with `kind = reservation`, `status = reserved`. Tap the block to select it, drag it to another time and to another station, and drag its end to make it longer; Studio follows. On a tablet or desktop, try the **Week** view.
+19. Book the same station and time again: the app refuses it ("already booked"). **Double booking from two devices:** switch Wi-Fi off on two devices, book the same station and time on both, then switch Wi-Fi on. Only one reservation stays; the other device shows it under **Not saved** (floor and calendar) with **Book again**.
+20. 30 minutes before a reservation, the station shows **Reserved soon** on the floor and the booking is listed under **Arrivals**. A walk-in that would run into it gets a warning. Open the reservation and **Check in**: it becomes a playing session that ends at the booked time (checkout as usual). If the station is still busy, use **Check in on another station**.
+21. For a reservation nobody came to: **Mark as no-show** appears 15 minutes after the start (Studio: `status = no_show`). A cashier can cancel a reservation, but still can't cancel a running session.
+
 ## 7b. Edge Functions (required for checkout)
 
 Two functions run in Supabase's `functions` container:

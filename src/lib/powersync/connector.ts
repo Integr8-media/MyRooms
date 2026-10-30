@@ -1,10 +1,12 @@
 import {
   UpdateType,
   type AbstractPowerSyncDatabase,
+  type CrudEntry,
   type PowerSyncBackendConnector,
 } from '@powersync/common';
 
 import { config } from '@/lib/config';
+import { errorKey, type ErrorKey } from '@/lib/errors';
 import { getSupabase } from '@/lib/supabase/client';
 
 /**
@@ -13,6 +15,7 @@ import { getSupabase } from '@/lib/supabase/client';
  * Retrying them would block the upload queue forever, so we drop them.
  */
 const FATAL_RESPONSE_CODES = [/^22...$/, /^23...$/, /^42501$/];
+// 23... includes 23P01: the no-double-booking exclusion constraint on reservations.
 
 /** An upload the server refused for good (same shape as a Postgres error). */
 class RejectedUpload extends Error {
@@ -43,6 +46,51 @@ async function uploadBill(sessionId: string) {
   throw error;
 }
 
+/**
+ * The error key shown for a refused change. Database functions raise named keys; a few
+ * constraint errors only have a code (two devices started the same station: 23505).
+ */
+export function rejectionError(table: string, error: unknown): ErrorKey {
+  const key = errorKey(error);
+  if (key !== 'unknown') return key;
+  const code = (error as { code?: string })?.code;
+  if (code === '23505' && table === 'sessions') return 'station_busy';
+  if (code === '42501') return 'not_allowed';
+  return 'unknown';
+}
+
+/**
+ * Keep a refused change on this device (upload_rejections, never synced) so staff can see
+ * what wasn't saved: the server's copy replaces the local row on the next sync. For an
+ * update, the whole local row is kept (the change alone wouldn't say which booking it was).
+ */
+async function recordRejection(database: AbstractPowerSyncDatabase, op: CrudEntry, error: unknown) {
+  try {
+    let data: Record<string, unknown> = { ...op.opData };
+    if (op.op !== UpdateType.PUT && /^[a-z_]+$/.test(op.table)) {
+      const row = await database.getOptional<Record<string, unknown>>(
+        `SELECT * FROM ${op.table} WHERE id = ?`,
+        [op.id],
+      );
+      data = { ...row, ...op.opData };
+    }
+    await database.execute(
+      `INSERT INTO upload_rejections (id, table_name, op, row_id, data, error, created_at)
+       VALUES (uuid(), ?, ?, ?, ?, ?, ?)`,
+      [
+        op.table,
+        op.op,
+        op.id,
+        JSON.stringify(data),
+        rejectionError(op.table, error),
+        new Date().toISOString(),
+      ],
+    );
+  } catch (e) {
+    console.warn('Could not record a rejected upload', e);
+  }
+}
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
     const { data, error } = await getSupabase().auth.getSession();
@@ -58,8 +106,10 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     if (!transaction) return;
 
     const supabase = getSupabase();
+    let current: CrudEntry | undefined;
     try {
       for (const op of transaction.crud) {
+        current = op;
         const table = supabase.from(op.table);
         let result;
         switch (op.op) {
@@ -86,8 +136,9 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (typeof code === 'string' && FATAL_RESPONSE_CODES.some((re) => re.test(code))) {
-        // TODO(Phase 6/9): surface rejected writes (e.g. booking conflicts) in a conflict UI.
+        // Dropped so the queue keeps moving, but recorded for the "not saved" list.
         console.error('PowerSync: discarding rejected write', code, error);
+        if (current) await recordRejection(database, current, error);
         await transaction.complete();
       } else {
         // Network or temporary error: PowerSync retries later.

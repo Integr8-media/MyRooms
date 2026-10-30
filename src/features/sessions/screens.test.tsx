@@ -112,6 +112,18 @@ const mockSession = {
   note: 'Ahmed',
 };
 
+// Reservations not checked in yet (useReserved).
+let mockReserved: object[] = [];
+const reservation = (id: string, stationId: string, from: number, to: number) => ({
+  id,
+  station_id: stationId,
+  scheduled_start: iso(from),
+  scheduled_end: iso(to),
+  customer_name: 'Mona',
+  players: 2,
+  station_name: 'Room',
+});
+
 let mockRole: 'owner' | 'manager' | 'cashier' = 'cashier';
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -120,6 +132,7 @@ let mockParams: Record<string, string> = {};
 
 jest.mock('@powersync/react', () => ({
   useQuery: (sql: string) => {
+    if (sql.includes("x.status = 'reserved'")) return { data: mockReserved, isLoading: false };
     const data = sql.includes('LEFT JOIN sessions x ON x.station_id')
       ? mockFloor
       : sql.includes('FROM session_segments g JOIN sessions')
@@ -172,6 +185,8 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
 }));
 jest.mock('@/features/sync/SyncStatusCard', () => ({ SyncStatusCard: () => null }));
 jest.mock('@/features/checkout/UnpaidList', () => ({ UnpaidList: () => null }));
+jest.mock('@/features/sync/RejectedChanges', () => ({ RejectedChanges: () => null }));
+jest.mock('@/lib/powersync/database', () => ({ powersync: {} }));
 jest.mock('expo-router', () => ({
   router: {
     push: (...a: unknown[]) => mockPush(...a),
@@ -198,6 +213,7 @@ beforeEach(() => {
   jest.useFakeTimers({ now: NOW });
   mockRole = 'cashier';
   mockParams = {};
+  mockReserved = [];
   jest.clearAllMocks();
 });
 afterEach(() => jest.useRealTimers());
@@ -227,6 +243,30 @@ describe('FloorScreen', () => {
       pathname: '/sessions/[id]',
       params: { id: 's-open' },
     });
+  });
+
+  it('shows "reserved soon" 30 minutes ahead and opens the reservation', async () => {
+    mockReserved = [reservation('r1', 'free', 20, 80), reservation('r2', 'open', 25, 85)];
+    await render(<FloorScreen />);
+    expect(screen.getByLabelText(/^Room 1, Reserved soon/)).toBeTruthy();
+    expect(screen.getByTestId('station-card-free-reservation')).toHaveTextContent(
+      'Reserved 14:50 Mona',
+    );
+    // The open session on Room 2 is warned that a booking is coming.
+    expect(screen.getByTestId('station-card-open-reservation')).toHaveTextContent(/14:55/);
+    expect(screen.getByTestId('arrivals')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('station-card-free'));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: '/reservations/[id]',
+      params: { id: 'r1' },
+    });
+  });
+
+  it('a reservation later in the day leaves the station free', async () => {
+    mockReserved = [reservation('r1', 'free', 45, 105)];
+    await render(<FloorScreen />);
+    expect(screen.getByLabelText(/^Room 1, Free/)).toBeTruthy();
+    expect(screen.queryByTestId('station-card-free-reservation')).toBeNull();
   });
 
   it('a station in maintenance cannot be started', async () => {
@@ -264,6 +304,17 @@ describe('StartSessionScreen', () => {
     expect(mockStart).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'fixed', packageId: 'p2', minutes: null }),
     );
+  });
+
+  it('warns when a walk-in would run into the next reservation', async () => {
+    mockReserved = [reservation('r1', 'free', 60, 120)];
+    await render(<StartSessionScreen />);
+    expect(screen.getByTestId('next-reservation')).toHaveTextContent(/Next reservation.*15:30/);
+    await fireEvent.press(screen.getByText('Fixed time'));
+    await fireEvent.press(screen.getByTestId('duration-90'));
+    expect(screen.getByTestId('next-reservation')).toHaveTextContent(/must end before/);
+    await fireEvent.press(screen.getByTestId('duration-60'));
+    expect(screen.getByTestId('next-reservation')).toHaveTextContent(/Next reservation/);
   });
 
   it('a fixed session with a quick duration is priced by the rate rules', async () => {

@@ -124,7 +124,7 @@ select throws_ok(
   $$insert into public.sessions (branch_id, station_id, kind, status, actual_start, scheduled_start, scheduled_end) values
     ('30000000-0000-0000-0000-00000000000a', '80000000-0000-0000-0000-000000000002', 'reservation', 'active',
      now(), now(), now() + interval '1 hour')$$,
-  '23514', 'invalid_session', 'reservations cannot be created yet'
+  '23514', 'invalid_session', 'a reservation cannot be created already active'
 );
 select throws_ok(
   $$insert into public.sessions (branch_id, station_id, kind, package_id, actual_start) values
@@ -287,10 +287,13 @@ select throws_ok(
     where id = '90000000-0000-0000-0000-000000000001'$$,
   '42501', null, 'nobody can change who started a session'
 );
-select throws_ok(
-  $$update public.sessions set actual_start = now() - interval '5 hours'
-    where id = '90000000-0000-0000-0000-000000000001'$$,
-  '42501', null, 'nobody can change when a session started'
+-- actual_start is writable (check-in sets it, Phase 6) but kept as it was on a running session.
+update public.sessions set actual_start = now() - interval '5 hours'
+ where id = '90000000-0000-0000-0000-000000000001';
+select is(
+  (select actual_start = now() - interval '1 hour' from public.sessions
+   where id = '90000000-0000-0000-0000-000000000001'),
+  true, 'nobody can change when a session started'
 );
 select throws_ok(
   $$delete from public.sessions where id = '90000000-0000-0000-0000-000000000001'$$,

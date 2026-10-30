@@ -276,6 +276,25 @@ export const sessionMinutesField = intField(1, MAX_SESSION_MINUTES);
 
 export const sessionNoteSchema = z.string().trim().max(200, 'tooLong');
 
+// ---------------------------------------------------------------------------
+// Reservations (Phase 6)
+// ---------------------------------------------------------------------------
+
+/** Shortest reservation, and the step the calendar snaps to. */
+export const MIN_RESERVATION_MINUTES = 15;
+
+export const reservationSchema = z.object({
+  stationId: z.string().min(1, 'required'),
+  date: dateField,
+  /** Start time "HH:MM" -> minutes after midnight (24:00 is not a start). */
+  time: clockField.refine((m) => m < 1440, 'invalidTime'),
+  minutes: intField(MIN_RESERVATION_MINUTES, MAX_SESSION_MINUTES),
+  players: z.number().int().min(1, 'outOfRange').max(MAX_PLAYERS, 'outOfRange'),
+  customerName: z.string().trim().min(1, 'required').max(80, 'tooLong'),
+  customerPhone: optionalText(30),
+  note: optionalText(200),
+});
+
 export type ValidationKey =
   | 'required'
   | 'tooLong'

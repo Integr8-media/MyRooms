@@ -1,6 +1,7 @@
 -- Minimal stand-in for what Supabase provides before migrations run.
 create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
 create schema auth;
+create schema if not exists extensions;
 grant usage on schema auth to anon, authenticated, service_role;
 create table auth.users (
   id uuid primary key, email text, email_confirmed_at timestamptz,
