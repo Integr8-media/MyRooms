@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 4 code done** (branch `feature/phase-4-billing`): server-calculated bills, split payments, discounts, refunds, voids and receipts. Waiting for the VPS to test end to end, like Phases 0–3. Last updated: 2026-10-30.
+> Status: **Phase 5 code done** (branch `feature/phase-5-income-dashboard`): income dashboard (today / week / month / custom, by method, branch, station type and day) and the cashier's "My shift" view, worked out on the device from synced payments. Waiting for the VPS to test end to end, like Phases 0–4. Last updated: 2026-10-30.
 
 ## 1. Product summary
 

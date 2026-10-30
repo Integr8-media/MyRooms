@@ -36,7 +36,10 @@ const RULES = {
   'bills.refund': ['owner', 'manager'],
   /** Void a bill so it doesn't count (with a reason). Audited. Managers: only their branches. */
   'bills.void': ['owner', 'manager'],
-  // Used from Phase 5 onwards.
+  /**
+   * Income reports for any period, by method, branch and station type. Managers: only their
+   * branches. Cashiers instead see only the money they took themselves today (end of shift).
+   */
   'income.view': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;
 

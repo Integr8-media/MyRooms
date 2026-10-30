@@ -96,6 +96,12 @@ export function FloorScreen() {
           </Text>
         </View>
         <Button
+          label={can('income.view') ? t('income.title') : t('income.myShift')}
+          variant="secondary"
+          onPress={() => router.push('/income')}
+          testID="open-income"
+        />
+        <Button
           label={t('settings.title')}
           variant="secondary"
           onPress={() => router.push('/settings')}
