@@ -15,6 +15,9 @@
     "@sentry/react-native": "~8.28.0",
     "@supabase/supabase-js": "^2.118.0",
     "@tauri-apps/plugin-notification": "^2.8.0",
+    "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "expo": "~58.0.21",
     "expo-constants": "~58.0.14",
     "expo-dev-client": "~58.0.17",
@@ -87,7 +90,10 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:check": "npm --prefix scripts/pgcheck run check",
-    "domain:sync": "node scripts/sync-domain.mjs"
+    "domain:sync": "node scripts/sync-domain.mjs",
+    "desktop:release-config": "node scripts/desktop-release-config.mjs",
+    "desktop:latest": "node scripts/desktop-latest-json.mjs",
+    "version:set": "node scripts/set-version.mjs"
   },
   "private": true
 }

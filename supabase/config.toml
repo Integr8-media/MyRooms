@@ -420,3 +420,7 @@ enabled = true
 [functions.invite-staff]
 enabled = true
 verify_jwt = true
+
+[functions.delete-account]
+enabled = true
+verify_jwt = true

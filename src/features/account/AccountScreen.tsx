@@ -13,6 +13,8 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { Button, Card, Notice, Screen, ScreenHeader, Text, TextField } from '@/ui';
 
+import { DeleteAccountCard } from './DeleteAccountCard';
+
 export function AccountScreen() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -87,6 +89,8 @@ export function AccountScreen() {
           testID="sign-out"
         />
       </Card>
+
+      <DeleteAccountCard />
     </Screen>
   );
 }

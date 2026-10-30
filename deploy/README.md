@@ -175,18 +175,24 @@ Offline hardening (Phase 9) needs the new migration (step 5: `server_time()`, us
 34. **Stuck uploads:** stop the functions container (`docker compose stop functions` in `~/myrooms/supabase`), end a session on a device: the badge turns **Not uploading** and the floor explains the bill service is down. Start the container again: the bill uploads and the badge goes back to **Up to date**.
 35. **Error reports** (if step 11 is done): in GlitchTip, the MyRooms project shows events from each platform, with ids and roles only (no names, emails or phone numbers). A refused change from item 32 shows as a warning "Upload refused by the server".
 36. **Backups:** after step 12, `ls ~/backups` shows last night's dump, and `sh ~/myrooms/app/deploy/backup/check.sh` ends with **restore check PASSED**.
+37. **Quick setup** (Phase 10): sign up a new owner, create an organization: the floor shows **Setup checklist**. Tap **Quick setup**, enter 3 PlayStation rooms at 60 EGP and 5 PCs at 20 EGP, **Create stations and prices**: the floor shows Room 1–3 and PC 1–5, and Settings → Price preview gives 60 EGP for an hour in a room. The checklist ticks prices and stations; invite someone and it disappears (or tap **Hide this**).
+38. **Delete my account:** (a) the only owner of an organization with a cashier: Settings → Account → **Delete my account** says to make someone else owner first; (b) a cashier deletes their account (type **DELETE**): they are signed out, can't sign in again, and the owner's Staff list no longer shows them, while their payments stay in the reports; (c) the owner of a test organization with no staff deletes their account: Studio shows the organization and its rows are gone. Needs step 7b's `delete-account`.
+39. **Help links:** Settings → **User guide** and **Privacy policy** open the pages (`https://app.example.com/guide.html`, `privacy.html`) on the web, Windows (in the browser) and phones, in the app's language.
+40. **Windows update** (after a release with step 9): install version N, publish N+1: within 6 hours (or at the next start) the floor shows **Version N+1 is available**; **Install and restart** updates and reopens the app, still signed in, with nothing lost.
+41. **Store builds** (step 10): the production Android build installs from the Play internal test track and the iOS build from TestFlight; the app name shows as **ماي رومز** on a phone set to Arabic.
 
 ## 7b. Edge Functions (required for checkout)
 
-Two functions run in Supabase's `functions` container:
+Three functions run in Supabase's `functions` container:
 
 - `create-bill` (**required** from Phase 4): when a session's bill uploads, it calculates the final bill on the server with the same pricing code as the app (`supabase/functions/_shared/domain`, a copy of `src/domain` made by `npm run domain:sync`) and saves it. Until it is deployed, a device's uploads stop at its first bill: that bill **and every change made after it** wait in the upload queue (the sync badge shows **Not uploading**, and the floor names the bill service). Nothing is lost: it all uploads once the function is there. Deploy it before staff start ending sessions.
 - `invite-staff`: saves an invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).
+- `delete-account` (**required for the store releases**, Phase 10): **Settings → Account → Delete my account**. Removes the person from their organizations (deleting an organization where they are the only member, with all its data; refusing if they are the only owner of one with staff) and soft-deletes their sign-in (the email is scrubbed, records they made stay). Without it, the button shows an error.
 
 ```sh
 # on the VPS
 cd ~/myrooms/app && git pull
-for f in _shared create-bill invite-staff; do
+for f in _shared create-bill invite-staff delete-account; do
   rm -rf ~/myrooms/supabase/volumes/functions/$f
   cp -r supabase/functions/$f ~/myrooms/supabase/volumes/functions/
 done
@@ -206,14 +212,49 @@ npm run build:web                                  # → dist/
 rsync -az --delete dist/ <user>@<vps-ip>:/var/www/myrooms/
 ```
 
-Check: `https://app.example.com` loads the sign-in page; after signing in, the sync badge shows **Up to date**.
+Check: `https://app.example.com` loads the sign-in page; after signing in, the sync badge shows **Up to date**. The user guide and privacy policy are part of the export: `https://app.example.com/guide.html`, `guide-ar.html` and `privacy.html` (the stores link to the privacy page; fill in its `[COMPANY NAME]`, `[SUPPORT EMAIL]` and `[EFFECTIVE DATE]` first, in `public/privacy.html`).
 
 ## 9. Build the Windows app
 
-- **Locally:** `npm run desktop:build` (uses `.env.local`; set `EXPO_PUBLIC_APP_URL` so password-reset emails sent from Windows link to the web app). The installer is in `src-tauri/target/release/bundle/nsis/`. If the build fails with `windres`, see Troubleshooting in the main README.
-- **From GitHub:** set the `EXPO_PUBLIC_*` values (including `EXPO_PUBLIC_APP_URL`) as repository **Variables** (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to `dev` and `main` (or by hand) and uploads the installer as a build artifact.
-- The installer is not code-signed yet (Phase 10), so Windows SmartScreen will warn on install.
-- Session alerts use the Tauri notification plugin (added in Phase 3); rebuild the installer after updating.
+- **Test builds:** `npm run desktop:build` locally (uses `.env.local`; set `EXPO_PUBLIC_APP_URL` so email links and the help pages open the web app), or the "Windows desktop build" workflow on pushes to `dev`/`main` (needs the `EXPO_PUBLIC_*` values as repository **Variables**). The installer is in `src-tauri/target/release/bundle/nsis/` or the run's artifacts. These builds never check for updates.
+- If a local build fails with `windres`, see Troubleshooting in the main README.
+
+### Releases with auto-update (Phase 10)
+
+The Windows app checks `https://app.example.com/desktop/latest.json` at start and every 6 hours. When a newer version is there, the floor shows **Version x is available** with **Install and restart** (staff choose when). Updates are signed with a key of ours, so a tampered file is refused.
+
+Once:
+
+```sh
+npx tauri signer generate -w myrooms-updater.key   # keep the .key file and its password in a password manager, never in git
+# on the VPS: the folder Caddy serves at /desktop (block in caddy/Caddyfile.example, reload Caddy)
+sudo mkdir -p /var/www/myrooms-desktop && sudo chown $USER /var/www/myrooms-desktop
+```
+
+GitHub → Settings → Secrets and variables → Actions:
+
+- **Variables:** `MYROOMS_UPDATE_URL` = `https://app.example.com/desktop`, `TAURI_UPDATER_PUBKEY` = the contents of `myrooms-updater.key.pub`.
+- **Secrets:** `TAURI_SIGNING_PRIVATE_KEY` (contents of `myrooms-updater.key`), `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; optional `VPS_SSH_KEY`, `VPS_HOST`, `VPS_USER` to upload automatically.
+
+Each release:
+
+```sh
+npm run version:set -- 1.0.1 && npm install --package-lock-only   # package.json, app.json, Cargo.toml
+git commit -am "Release 1.0.1" && git tag v1.0.1 && git push --follow-tags
+```
+
+The tag runs the workflow in release mode: it builds the signed installer, writes `latest.json`, uploads both as the `myrooms-windows-release` artifact and, with the SSH secrets, copies them to `/var/www/myrooms-desktop` (installer first, `latest.json` last). Without the SSH secrets, copy the artifact's files there yourself, `latest.json` last. Locally the same is `npm run desktop:release-config`, `npx tauri build --bundles nsis --config src-tauri/tauri.release.conf.json`, `npm run desktop:latest` (with the variables above in the environment).
+
+The first release must be installed by hand (download the `-setup.exe`); every later one arrives by itself. The installer installs per user (no administrator rights), in English or Arabic.
+
+### Code signing (removes the SmartScreen warning)
+
+Without it Windows SmartScreen warns on install ("More info" → "Run anyway"); updates are still signed and safe. Two options, both set up once in GitHub:
+
+- **A certificate file** (OV/EV code-signing certificate as `.pfx`): secrets `WINDOWS_CERTIFICATE` (the file in base64: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))`) and `WINDOWS_CERTIFICATE_PASSWORD`. Note that most certificates sold since 2023 live on a hardware token and can't be exported: then use the next option.
+- **A cloud signing service** (e.g. Azure Artifact Signing): variable `WINDOWS_SIGN_COMMAND`, the command that signs one file with `%1` as the file path (see the service's Tauri instructions), plus its login secrets as environment variables of the release step.
+
+Who pays for and owns the certificate is open question 6 for the client.
 
 ## 10. Build the Android and iOS apps
 
@@ -232,7 +273,23 @@ npx eas-cli build --profile development --platform ios       # needs an Apple De
 
 Phase 3 added `expo-notifications`, Phase 4 added `expo-print` and `expo-sharing`, Phase 8 added `expo-file-system` and Phase 9 added `@sentry/react-native` (native code), so phones need a **new development build** after updating. For error reports, also add `EXPO_PUBLIC_SENTRY_DSN` (and `EXPO_PUBLIC_APP_ENV`) with `eas env:create` like the URLs above. `eas.json` sets `SENTRY_DISABLE_AUTO_UPLOAD=true`, so builds don't try to upload source maps (not set up). Only local notifications are used: no push keys (FCM/APNs) are needed.
 
-Store releases (Google Play, App Store) come in Phase 10.
+### Store releases (Phase 10)
+
+The checklist (accounts, Data safety / App Privacy answers, screenshots, review notes with a demo account, listing text in English and Arabic) is in [`docs/store/README.md`](../docs/store/README.md); listing text in `docs/store/listing.en.md` and `listing.ar.md`.
+
+```sh
+# production environment values, once (same names as above, plus EXPO_PUBLIC_APP_URL and EXPO_PUBLIC_SENTRY_DSN)
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_APP_URL --value https://app.example.com --visibility plaintext
+npx eas-cli build --profile production --platform android     # app bundle (.aab); build numbers are counted by EAS
+npx eas-cli build --profile production --platform ios
+npx eas-cli submit --profile production --platform ios        # asks for the App Store Connect app the first time
+npx eas-cli submit --profile production --platform android    # after the first upload by hand (below)
+```
+
+- **Google Play:** the very first `.aab` must be uploaded by hand in Play Console (Internal testing). Then create a service account with release rights, save its key as `google-service-account.json` in the repo root (in `.gitignore`, never commit it) and `eas submit` sends later builds to the internal track as drafts.
+- **App Store:** `eas submit` uploads to TestFlight; submit for review in App Store Connect. `ITSAppUsesNonExemptEncryption` is false in `app.json` (only HTTPS), so no export compliance question per build.
+- Deploy `delete-account` (step 7b) and publish the web app (step 8) **before** submitting: reviewers delete a test account and open the privacy policy.
+- The app is called **MyRooms**, and **ماي رومز** on phones set to Arabic (`assets/locales`). Icons and splash come from `assets/images` (source: `assets/images/icon.svg`).
 
 ## 11. Error tracking (optional, GlitchTip)
 
@@ -274,4 +331,6 @@ crontab -e                                     # add the two lines below
 - **GlitchTip**: `docker compose pull && docker compose --env-file .env up -d` in `deploy/glitchtip`.
 - **Edge Functions**: repeat step 7b (always after pulling a change to `src/domain`, since `create-bill` uses a copy of it).
 - **Web app**: repeat step 8.
+- **Windows app**: tag a release (step 9); installed apps update themselves.
+- **Phones**: `eas build --profile production` then `eas submit` (step 10). Use the same version as the Windows app (`npm run version:set`).
 - **Supabase version**: follow the official upgrade notes, using `sh run.sh` and `update.sh` in `~/myrooms/supabase`.

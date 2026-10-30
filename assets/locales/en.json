@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "MyRooms"
+  },
+  "android": {
+    "app_name": "MyRooms"
+  }
+}

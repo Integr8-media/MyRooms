@@ -7,9 +7,11 @@ import { floorStatus } from '@/domain/sessions';
 import { UnpaidList } from '@/features/checkout/UnpaidList';
 import { ArrivalsList } from '@/features/reservations/ArrivalsList';
 import { clockAt, useReserved } from '@/features/reservations/data';
+import { SetupChecklist } from '@/features/setup/SetupChecklist';
 import { RejectedChanges } from '@/features/sync/RejectedChanges';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { SyncNotices } from '@/features/sync/SyncNotices';
+import { UpdateNotice } from '@/features/updates/UpdateNotice';
 import { BranchSwitcher } from '@/features/workspace/BranchSwitcher';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import type { SessionSegmentRow } from '@/lib/powersync/schema';
@@ -154,7 +156,9 @@ export function FloorScreen() {
       <ModuleLinks />
       <BranchSwitcher />
       <SyncNotices />
+      <UpdateNotice />
       <RejectedChanges />
+      <SetupChecklist />
 
       {!branch ? <Notice tone="warning" message={t('home.noBranch')} /> : null}
 
@@ -164,14 +168,18 @@ export function FloorScreen() {
           <Text variant="muted">
             {can('stations.edit') ? t('floor.emptyCanEdit') : t('floor.empty')}
           </Text>
-          {can('stations.edit') ? (
-            <Button
-              label={t('stations.title')}
-              variant="secondary"
-              className="self-start"
-              onPress={() => router.push('/settings/stations')}
-            />
-          ) : null}
+          <View className="flex-row flex-wrap gap-2">
+            {can('prices.edit') ? (
+              <Button label={t('setup.title')} onPress={() => router.push('/setup')} />
+            ) : null}
+            {can('stations.edit') ? (
+              <Button
+                label={t('stations.title')}
+                variant="secondary"
+                onPress={() => router.push('/settings/stations')}
+              />
+            ) : null}
+          </View>
         </Card>
       ) : null}
 

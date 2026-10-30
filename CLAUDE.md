@@ -26,6 +26,7 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 - Calendar: custom timeline (`src/features/calendar/`), no library. Drag/resize with RN `PanResponder`; positions use the logical `start` style so time runs right to left in Arabic.
 - Sync status (Phase 9): `src/lib/powersync/health.ts` (pure) + `useSyncHealth` → `SyncBadge` (floor header), `SyncNotices` (floor) and the `/sync` page; `control.ts` (`connectSync`, `syncNow`, `checkClock` against `public.server_time()`); `persist.web.ts` asks the browser to keep the local database.
 - Error tracking (Phase 9): `@sentry/react-native` via `src/lib/monitoring` (`EXPO_PUBLIC_SENTRY_DSN`, off when empty), sent to a self-hosted GlitchTip (`deploy/glitchtip`). Every event goes through `scrub.ts` (no names, emails, phones, notes). Expo Router `ErrorBoundary` = `src/features/errors/ErrorScreen`.
+- Release (Phase 10): Windows auto-update with the Tauri updater (registered only when `src-tauri/tauri.release.conf.json`, written by `scripts/desktop-release-config.mjs` in CI, holds the pubkey and URL) + `tauri-plugin-process` (restart) + `tauri-plugin-opener` (help links). App side: `src/lib/updates/updates.ts` vs `updates.web.ts` → `UpdateNotice` on the floor. Help pages are static files in `public/` (`guide.html`, `guide-ar.html`, `privacy.html`), opened through `src/lib/help/open.ts` vs `open.web.ts`. Store listings and checklist in `docs/store/`. Icons are rendered from `assets/images/icon.svg`.
 - zod for form validation (`src/domain/validation.ts`; messages are i18n keys). Jest (jest-expo) + React Native Testing Library v14 (async `render` and `fireEvent`).
 
 ## Layout
@@ -33,11 +34,13 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 ```
 src/app/        routes only (Expo Router)
 src/features/   feature UI, one folder per feature
-src/domain/     pure business logic (money, pricing, zoned time, sessions, reservations, billing, income, reports, items, expenses, permissions, validation), no React, heavily unit-tested
-src/lib/        infrastructure: config, i18n, settings, supabase, powersync (+ sync health), notifications, monitoring
+src/domain/     pure business logic (money, pricing, zoned time, sessions, reservations, billing, income, reports, items, expenses, permissions, validation, setup, account), no React, heavily unit-tested
+src/lib/        infrastructure: config, i18n, settings, supabase, powersync (+ sync health), notifications, monitoring, help (guide/privacy links), updates (Windows auto-update)
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl, Stepper, ...)
 supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions; _shared/domain is a generated copy of src/domain), config.toml (local CLI)
-scripts/        sync-domain.mjs (copies src/domain for Edge Functions), pgcheck/ (migrations + pgTAP in PGlite, sync config check)
+scripts/        sync-domain.mjs (copies src/domain for Edge Functions), set-version.mjs, desktop-release-config.mjs + desktop-latest-json.mjs (Windows releases), pgcheck/ (migrations + pgTAP in PGlite, sync config check)
+public/         static pages in the web export: guide.html, guide-ar.html, privacy.html
+docs/store/     store listings (EN/AR) and the submission checklist
 deploy/         VPS: Supabase setup script + port override, PowerSync compose/config/sync streams, Caddyfile, GlitchTip compose, backup/check/restore scripts
 src-tauri/      Windows shell
 ```
@@ -58,6 +61,8 @@ src-tauri/      Windows shell
 - **Reports (Phase 8):** also on the device (`src/domain/reports.ts`, `src/features/reports/`, route `/income`; cashiers get `MyShift`). Net profit = income − expenses (`spent_on`); usage = segment time of active/completed sessions ÷ 24 h per station up to now; snack sales by `session_items.created_at` (cancelled sessions and void bills excluded); top customers by net payments of sessions with a `customer_id`. Each module's section and export part only shows when its toggle is on. Same loose SQL date filter for segments and items. CSV/PDF come from one `ReportDocument`.
 - **Bills and payments:** bill id = session id. Only the `create-bill` Edge Function (service role, `public.create_bill`) creates bills; the connector routes local `bills` inserts there. `create_bill` also adds the session's items and the customer's default discount (`discount_reason = 'customer:<pct>'`). On the device, derive items/total/paid/status from the bill's time and discount amounts plus the local `session_items` and payments (`summarizeBill`), never from `bills.items_amount/total/paid_amount/status`, and only UPDATE the columns clients may write (`discount_amount`, `discount_reason`, `status` = 'void', `void_reason`). Payments are insert-only; corrections are refunds.
 - **Optional modules (customers, snacks, expenses):** check `useWorkspace().features` before showing any module UI (toggles only hide; the server never refuses writes for a module that is off, and existing items still show on bills). Item prices and names are set by the server from the product; `session_items` are insert/delete only. Stock is never stored: it is `sum(stock_movements) - sum(session_items)` per branch (`useProducts`); never write a movement for a sale. Expenses are owners/managers only. Customers are org-wide and their phone is not unique (warn with `samePhone` instead).
+- **Account deletion:** only through the `delete-account` Edge Function (service-role `delete_account()`, then a GoTrue **soft** delete so `on delete set null` never rewrites closed sessions or bills). A new org-scoped table must be added to `private.purge_organization` (children before parents: many FKs are `on delete restrict`) and to the phase 10 pgTAP "every row is gone" check. Keep `src/domain/account.ts` in step.
+- **Versions:** one version for every platform: `npm run version:set -- x.y.z` (package.json, app.json, Cargo.toml; `tauri.conf.json` reads package.json). A Jest test fails if they differ. Store build numbers are counted by EAS.
 - **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app). The Sentry/GlitchTip DSN is public by design.
 - **Error reports:** use `reportError`/`reportWarning` from `@/lib/monitoring` with an `area` and ids only; never pass row data, names or phones (scrub.ts is a safety net, not the plan). Don't report plain offline failures.
 - **Time zones:** `toLocal`/`offsetAt` are cached per UTC hour; in loops over many rows use `localDateKey()` instead of `dateKey(toLocal(…))`. Check speed with `npm run perf` after touching reports, pricing or zoned-time.
@@ -74,6 +79,9 @@ npm run db:start | db:reset | db:test   # local Supabase (needs Docker; not inst
 npm run db:check                        # migrations + pgTAP in PGlite + sync config check (once: npm --prefix scripts/pgcheck install)
 npm run domain:sync                     # copy src/domain to supabase/functions/_shared/domain
 npm run perf                            # performance benchmark on synthetic data (not part of npm test)
+npm run version:set -- 1.0.1            # set the app version everywhere
+npm run desktop:release-config          # CI: write tauri.release.conf.json (MYROOMS_UPDATE_URL, TAURI_UPDATER_PUBKEY)
+npm run desktop:latest                  # after a release build: dist-desktop/ with installer, .sig, latest.json
 ```
 
 ## At the end of every phase (required)
