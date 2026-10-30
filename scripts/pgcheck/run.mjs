@@ -9,10 +9,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { PGlite } from '@electric-sql/pglite';
+import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = process.argv[2] ?? join(here, '../..');
-const db = await PGlite.create();
+// btree_gist: the reservations exclusion constraint (station_id with =) needs it.
+const db = await PGlite.create({ extensions: { btree_gist } });
 
 const exec = async (label, sql) => {
   try {

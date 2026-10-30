@@ -15,6 +15,7 @@
     --color-success: 22 163 74;
     --color-warning: 217 119 6;
     --color-danger: 220 38 38;
+    --color-reserved: 2 132 199;
   }
 
   .dark:root {
@@ -28,5 +29,6 @@
     --color-success: 74 222 128;
     --color-warning: 251 191 36;
     --color-danger: 248 113 113;
+    --color-reserved: 56 189 248;
   }
 }

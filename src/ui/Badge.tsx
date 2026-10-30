@@ -9,6 +9,7 @@ const tones = {
   success: 'bg-success/15',
   warning: 'bg-warning/15',
   danger: 'bg-danger/15',
+  reserved: 'bg-reserved/15',
 } as const;
 
 export function Badge({ label, tone = 'neutral' }: { label: string; tone?: keyof typeof tones }) {

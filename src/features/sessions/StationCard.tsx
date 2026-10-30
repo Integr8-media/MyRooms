@@ -18,13 +18,19 @@ const tone = {
   ending_soon: { box: 'border-warning bg-warning/15', badge: 'warning' },
   overtime: { box: 'border-danger bg-danger/15', badge: 'danger' },
   maintenance: { box: 'border-border bg-border/30 opacity-70', badge: 'neutral' },
+  reserved_soon: { box: 'border-reserved bg-reserved/10', badge: 'reserved' },
 } as const;
+
+/** What a card shows: the floor status, or "reserved soon" for a free station. */
+export type CardStatus = FloorStatus | 'reserved_soon';
 
 export type StationCardProps = {
   name: string;
   typeName: string | null;
   color: string | null;
-  status: FloorStatus;
+  status: CardStatus;
+  /** The next reservation ("Reserved 18:00 · Ahmed"), and whether this session runs into it. */
+  reservation?: { label: string; warn: boolean } | null;
   timing: SessionTiming | null;
   players: number | null;
   estimate: number | null;
@@ -39,6 +45,7 @@ export function StationCard({
   typeName,
   color,
   status,
+  reservation,
   timing,
   players,
   estimate,
@@ -52,11 +59,25 @@ export function StationCard({
   const timerLabel =
     remaining == null ? t('floor.elapsed') : remaining < 0 ? t('floor.overBy') : t('floor.left');
   const statusLabel = t(`floor.status.${status}`);
+  const reservationLine = reservation ? (
+    <Text
+      className={cn('text-sm', reservation.warn ? 'font-medium text-danger' : 'text-reserved')}
+      numberOfLines={1}
+      testID={testID ? `${testID}-reservation` : undefined}
+    >
+      {reservation.label}
+    </Text>
+  ) : null;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[name, statusLabel, timer ? `${timerLabel} ${timer}` : null]
+      accessibilityLabel={[
+        name,
+        statusLabel,
+        timer ? `${timerLabel} ${timer}` : null,
+        reservation?.label,
+      ]
         .filter(Boolean)
         .join(', ')}
       accessibilityState={{ disabled: !onPress }}
@@ -100,11 +121,19 @@ export function StationCard({
               <Text className="font-medium">{formatMoney(estimate, i18n.language)}</Text>
             ) : null}
           </View>
+          {reservationLine}
         </>
       ) : (
-        <Text variant="muted">
-          {status === 'free' ? t('floor.tapToStart') : t('floor.outOfService')}
-        </Text>
+        <>
+          <Text variant="muted">
+            {status === 'maintenance'
+              ? t('floor.outOfService')
+              : status === 'reserved_soon'
+                ? t('floor.tapToCheckIn')
+                : t('floor.tapToStart')}
+          </Text>
+          {reservationLine}
+        </>
       )}
     </Pressable>
   );

@@ -24,6 +24,8 @@ export const ERROR_KEYS = [
   'session_closed',
   'invalid_package',
   'too_many_players',
+  'booking_conflict',
+  'too_early',
   'session_not_ended',
   'invalid_bill',
   'bill_void',
@@ -51,6 +53,8 @@ const ALIASES: Record<string, ErrorKey> = {
   over_email_send_rate_limit: 'rate_limited',
   over_request_rate_limit: 'rate_limited',
   access_denied: 'otp_expired',
+  // Postgres exclusion violation: the no-double-booking constraint on reservations.
+  '23P01': 'booking_conflict',
 };
 
 function isErrorKey(value: unknown): value is ErrorKey {

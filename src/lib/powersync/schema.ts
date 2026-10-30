@@ -152,6 +152,10 @@ const sessions = new Table(
     actual_start: column.text,
     actual_end: column.text,
     note: column.text,
+    /** Reservations: planned players and who booked (walk-ins keep players on segments). */
+    players: column.integer,
+    customer_name: column.text,
+    customer_phone: column.text,
     created_by: column.text,
     ended_by: column.text,
     created_at: column.text,
@@ -227,6 +231,23 @@ const payments = new Table(
   { indexes: { bill: ['bill_id'], branch_paid: ['branch_id', 'paid_at'] } },
 );
 
+/**
+ * Device only (never synced): changes the server refused for good, e.g. a reservation that
+ * lost a double-booking race while offline. The connector records them so staff can see what
+ * was not saved and redo it. data is the refused row as JSON text.
+ */
+const upload_rejections = new Table(
+  {
+    table_name: column.text,
+    op: column.text,
+    row_id: column.text,
+    data: column.text,
+    error: column.text,
+    created_at: column.text,
+  },
+  { localOnly: true },
+);
+
 export const AppSchema = new Schema({
   organizations,
   branches,
@@ -241,6 +262,7 @@ export const AppSchema = new Schema({
   session_segments,
   bills,
   payments,
+  upload_rejections,
 });
 
 export type Database = (typeof AppSchema)['types'];
@@ -258,3 +280,4 @@ export type SessionRow = Row<Database['sessions']>;
 export type SessionSegmentRow = Row<Database['session_segments']>;
 export type BillRow = Row<Database['bills']>;
 export type PaymentRow = Row<Database['payments']>;
+export type UploadRejectionRow = Row<Database['upload_rejections']>;

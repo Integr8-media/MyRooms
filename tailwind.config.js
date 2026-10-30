@@ -18,6 +18,7 @@ module.exports = {
         success: color('success'),
         warning: color('warning'),
         danger: color('danger'),
+        reserved: color('reserved'),
       },
     },
   },

@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 5 code done** (branch `feature/phase-5-income-dashboard`): income dashboard (today / week / month / custom, by method, branch, station type and day) and the cashier's "My shift" view, worked out on the device from synced payments. Waiting for the VPS to test end to end, like Phases 0–4. Last updated: 2026-10-30.
+> Status: **Phase 6 code done** (branch `feature/phase-6-calendar-reservations`): timeline calendar (day view with tap-to-book, drag to move/resize; week view on wide screens), reservations with check-in and no-show, no double booking enforced by a database exclusion constraint, "reserved soon" and arrivals on the floor, and a "Not saved" list for changes the server refused. That completes the MVP code (Phases 0–6); waiting for the VPS to test end to end and run the pilot. Last updated: 2026-10-30.
 
 ## 1. Product summary
 

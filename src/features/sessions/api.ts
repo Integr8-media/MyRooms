@@ -10,12 +10,12 @@ import { powersync } from '@/lib/powersync/database';
  * local ones give an immediate, translated error (`errors.<key>`).
  */
 
-class SessionError extends Error {}
-const fail = (key: string): never => {
+export class SessionError extends Error {}
+export const fail = (key: string): never => {
   throw new SessionError(key);
 };
 
-const iso = (ms: number) => new Date(ms).toISOString();
+export const iso = (ms: number) => new Date(ms).toISOString();
 
 type StationInfo = {
   id: string;
@@ -26,7 +26,7 @@ type StationInfo = {
   max_players: number;
 };
 
-async function availableStation(tx: Transaction, stationId: string, branchId: string) {
+export async function availableStation(tx: Transaction, stationId: string, branchId: string) {
   const station = await tx.getOptional<StationInfo>(
     `SELECT s.id, s.branch_id, s.station_type_id, s.status, s.is_active, t.max_players
        FROM stations s JOIN station_types t ON t.id = s.station_type_id
@@ -70,7 +70,7 @@ async function openSegment(tx: Transaction, sessionId: string) {
   );
 }
 
-async function insertSegment(
+export async function insertSegment(
   tx: Transaction,
   session: { id: string; orgId: string; branchId: string },
   station: { id: string; typeId: string },

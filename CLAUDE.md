@@ -22,6 +22,7 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 - Zustand for UI state (persisted with AsyncStorage): settings, and the active org/branch (`workspace-store`). `useWorkspace()` gives the current org, role, branches, feature toggles and `can(permission)`.
 - Session alerts: `expo-notifications` (local notifications, scheduled with the OS) on phones; on web/Windows a 5-second check while the app is open, using the Tauri notification plugin (`@tauri-apps/plugin-notification` + `tauri-plugin-notification`) or the Web Notifications API. Platform split: `src/lib/notifications/alerts.ts` vs `alerts.web.ts`.
 - Receipts: HTML from `src/features/checkout/receipt.ts`. Phones: `expo-print` + `expo-sharing` (PDF share sheet). Web/Windows: print from a hidden iframe. Platform split: `shareReceipt.ts` vs `shareReceipt.web.ts`.
+- Calendar: custom timeline (`src/features/calendar/`), no library. Drag/resize with RN `PanResponder`; positions use the logical `start` style so time runs right to left in Arabic.
 - zod for form validation (`src/domain/validation.ts`; messages are i18n keys). Jest (jest-expo) + React Native Testing Library v14 (async `render` and `fireEvent`).
 
 ## Layout
@@ -29,7 +30,7 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 ```
 src/app/        routes only (Expo Router)
 src/features/   feature UI, one folder per feature
-src/domain/     pure business logic (money, pricing, zoned time, sessions, billing, income, permissions, validation), no React, heavily unit-tested
+src/domain/     pure business logic (money, pricing, zoned time, sessions, reservations, billing, income, permissions, validation), no React, heavily unit-tested
 src/lib/        infrastructure: config, i18n, settings, supabase, powersync, notifications
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl, Stepper, ...)
 supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions; _shared/domain is a generated copy of src/domain), config.toml (local CLI)
@@ -49,6 +50,7 @@ src-tauri/      Windows shell
 - **Access rules:** build policies from the `private.*` helpers (`is_org_owner`, `can_manage_branch`, `can_access_branch`). Revoke the default grants and grant only the columns clients may write. Keep `src/domain/permissions.ts` (what the UI shows) and the sync streams in step with the SQL rules.
 - **Sessions:** a session is a list of `session_segments` (new segment on a player change or a move; a segment is always on the session's current station). Timestamps from the local DB may be Postgres text: parse them with `parseTimestamp` (`src/domain/sessions.ts`), never `Date.parse`. Confirm destructive actions inline (no `Alert.alert`: it doesn't work on web).
 - **Local writes** go through PowerSync (`powersync.execute`); never set `created_at`/`updated_at` in an UPDATE. PowerSync tables are views, so `INSERT … RETURNING` doesn't work: get an id first with `SELECT uuid() AS id`. Money changes (prices, bills, discounts, voids, payments, refunds) are recorded in `audit_log` by triggers. Online-only actions (create org, invite, accept) are RPCs. Database functions raise error keys, translated via `src/lib/errors.ts` and `errors.*` in the locales.
+- **Reservations:** sessions with `kind = 'reservation'`, `status = 'reserved'`; check-in makes them `active`. The exclusion constraint `sessions_no_double_booking` (plus `private.check_booking`) is the final judge; keep `src/domain/reservations.ts` (`findConflict`, `NO_SHOW_GRACE_MS`) in step with the SQL. Refused uploads are recorded in the local-only `upload_rejections` table and shown by `RejectedChanges`: never drop a write silently.
 - **Income:** reports are computed on the device from synced `payments` with `src/domain/income.ts` (net = payments − refunds, by `paid_at` in the org time zone, void bills excluded). Owners/managers (`income.view`) see any period; cashiers only their own payments today. Filter `paid_at` in SQL only loosely (`utcDateWindow`: its text format differs between local and synced rows) and do the exact range check in JS.
 - **Bills and payments:** bill id = session id. Only the `create-bill` Edge Function (service role, `public.create_bill`) creates bills; the connector routes local `bills` inserts there. On the device, derive total/paid/status from the bill amounts and local payments (`summarizeBill`), never from `bills.total/paid_amount/status`, and only UPDATE the columns clients may write (`discount_amount`, `discount_reason`, `status` = 'void', `void_reason`). Payments are insert-only; corrections are refunds.
 - **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app).

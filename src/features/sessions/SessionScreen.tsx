@@ -17,6 +17,8 @@ import { ErrorNotice } from '@/features/common/ErrorNotice';
 import { BillBreakdown } from '@/features/pricing/BillBreakdown';
 import { ColorDot } from '@/features/pricing/pickers';
 import { formatDuration } from '@/features/pricing/format';
+import { clockAt, useReserved } from '@/features/reservations/data';
+import { nextReservation, runsIntoReservation } from '@/domain/reservations';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import {
@@ -79,6 +81,7 @@ export function SessionScreen() {
   );
   const station = stationRows[0];
   const floor = useFloor(branch?.id);
+  const reserved = useReserved(branch?.id);
 
   if (!session) {
     return isLoading ? (
@@ -102,6 +105,11 @@ export function SessionScreen() {
   const maxPlayers = station?.max_players ?? 1;
   const status = active && timing ? floorStatus({ status: 'active' }, timing, now) : null;
   const remaining = active && timing ? remainingMs(timing, now) : null;
+  const next =
+    active && session.station_id ? nextReservation(reserved, session.station_id, now) : null;
+  const clash = !!timing && runsIntoReservation(timing.scheduledEnd, next, now);
+  const kindKey =
+    session.kind === 'reservation' ? 'reservation' : session.kind === 'fixed' ? 'fixed' : 'open';
 
   const clock = (instant: number | null) => {
     if (instant == null) return '—';
@@ -136,7 +144,10 @@ export function SessionScreen() {
       >
         <View className="flex-row flex-wrap items-center gap-2">
           {station?.type_name ? <Text variant="muted">{station.type_name}</Text> : null}
-          <Badge label={t(`sessions.kind.${session.kind === 'fixed' ? 'fixed' : 'open'}`)} />
+          <Badge
+            label={t(`sessions.kind.${kindKey}`)}
+            tone={kindKey === 'reservation' ? 'reserved' : 'neutral'}
+          />
           <Badge
             label={
               status
@@ -192,14 +203,31 @@ export function SessionScreen() {
         </Text>
         <Text>{t('floor.players', { count: players })}</Text>
         {pkg ? <Text>{t('sessions.withPackage', { name: pkg.name })}</Text> : null}
+        {session.customer_name ? (
+          <Text>
+            {session.customer_name}
+            {session.customer_phone ? ` · ${session.customer_phone}` : ''}
+          </Text>
+        ) : null}
         {session.note ? <Text variant="muted">{session.note}</Text> : null}
       </Card>
+
+      {next && clash ? (
+        <Notice
+          tone="danger"
+          message={t('sessions.reservationClash', {
+            time: clockAt(next.start, timeZone),
+            name: next.customer_name ?? '',
+          })}
+          testID="session-reservation-clash"
+        />
+      ) : null}
 
       <ErrorNotice error={error} />
 
       {active && can('sessions.run') ? (
         <>
-          {session.kind === 'fixed' ? (
+          {session.kind !== 'open' && timing?.scheduledEnd != null ? (
             <Card>
               <Text variant="heading">{t('sessions.extend')}</Text>
               <View className="flex-row flex-wrap gap-2">
