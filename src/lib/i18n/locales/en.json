@@ -490,5 +490,36 @@
     "unpaidTitle": "Waiting for payment ({{count}})",
     "endedAt": "Ended {{time}}",
     "noBillShort": "No bill"
+  },
+  "income": {
+    "title": "Income",
+    "myShift": "My shift",
+    "myShiftHint": "Only the money you took yourself today. Check the Cash line against your drawer.",
+    "period": {
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "custom": "Custom"
+    },
+    "from": "From",
+    "to": "To",
+    "dateHint": "Dates as YYYY-MM-DD. Both days are included.",
+    "rangeError": {
+      "invalid_date": "Enter both dates as YYYY-MM-DD.",
+      "end_before_start": "The end date is before the start date.",
+      "range_too_long": "Pick at most one year."
+    },
+    "allBranches": "All branches",
+    "byMethod": "By payment method",
+    "byBranch": "By branch",
+    "byStationType": "By station type",
+    "byDay": "By day",
+    "unknown": "Unknown",
+    "nothing": "No payments in this period.",
+    "nothingToday": "You haven't taken any payments today.",
+    "counts": "Payments: {{count}} · received {{received}}",
+    "refunds": "Refunds: {{count}} · given back {{amount}}",
+    "myPayments": "My payments today ({{count}})",
+    "howCounted": "Income is the money received minus refunds, on the day it changed hands. Void bills don't count. Payments taken offline on other devices appear once they sync."
   }
 }

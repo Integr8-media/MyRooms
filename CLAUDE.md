@@ -29,7 +29,7 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 ```
 src/app/        routes only (Expo Router)
 src/features/   feature UI, one folder per feature
-src/domain/     pure business logic (money, pricing, zoned time, sessions, permissions, validation), no React, heavily unit-tested
+src/domain/     pure business logic (money, pricing, zoned time, sessions, billing, income, permissions, validation), no React, heavily unit-tested
 src/lib/        infrastructure: config, i18n, settings, supabase, powersync, notifications
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl, Stepper, ...)
 supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions; _shared/domain is a generated copy of src/domain), config.toml (local CLI)
@@ -49,6 +49,7 @@ src-tauri/      Windows shell
 - **Access rules:** build policies from the `private.*` helpers (`is_org_owner`, `can_manage_branch`, `can_access_branch`). Revoke the default grants and grant only the columns clients may write. Keep `src/domain/permissions.ts` (what the UI shows) and the sync streams in step with the SQL rules.
 - **Sessions:** a session is a list of `session_segments` (new segment on a player change or a move; a segment is always on the session's current station). Timestamps from the local DB may be Postgres text: parse them with `parseTimestamp` (`src/domain/sessions.ts`), never `Date.parse`. Confirm destructive actions inline (no `Alert.alert`: it doesn't work on web).
 - **Local writes** go through PowerSync (`powersync.execute`); never set `created_at`/`updated_at` in an UPDATE. PowerSync tables are views, so `INSERT … RETURNING` doesn't work: get an id first with `SELECT uuid() AS id`. Money changes (prices, bills, discounts, voids, payments, refunds) are recorded in `audit_log` by triggers. Online-only actions (create org, invite, accept) are RPCs. Database functions raise error keys, translated via `src/lib/errors.ts` and `errors.*` in the locales.
+- **Income:** reports are computed on the device from synced `payments` with `src/domain/income.ts` (net = payments − refunds, by `paid_at` in the org time zone, void bills excluded). Owners/managers (`income.view`) see any period; cashiers only their own payments today. Filter `paid_at` in SQL only loosely (`utcDateWindow`: its text format differs between local and synced rows) and do the exact range check in JS.
 - **Bills and payments:** bill id = session id. Only the `create-bill` Edge Function (service role, `public.create_bill`) creates bills; the connector routes local `bills` inserts there. On the device, derive total/paid/status from the bill amounts and local payments (`summarizeBill`), never from `bills.total/paid_amount/status`, and only UPDATE the columns clients may write (`discount_amount`, `discount_reason`, `status` = 'void', `void_reason`). Payments are insert-only; corrections are refunds.
 - **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app).
 - **Git:** never commit, push or open PRs unless the user explicitly asks in that session. Work on a feature branch off `dev`.

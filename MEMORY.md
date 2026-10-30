@@ -11,12 +11,27 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed) | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
 | 3 Live floor and walk-ins               | **Code done, VPS test pending**   | `feature/phase-3-sessions` (not committed)         | 158 pgTAP checks pass on PGlite; 116 Jest tests                             |
 | 4 Checkout and payments                 | **Code done, VPS test pending**   | `feature/phase-4-billing` (not committed)          | 212 pgTAP checks pass on PGlite; 144 Jest tests                             |
-| 5 Income dashboard                      | Not started                       |                                                    |                                                                             |
+| 5 Income dashboard                      | **Code done, VPS test pending**   | `feature/phase-5-income-dashboard` (not committed) | No server changes; 170 Jest tests                                           |
 | 6 Calendar and reservations (MVP pilot) | Not started                       |                                                    |                                                                             |
 | 7 Optional modules                      | Not started                       |                                                    |                                                                             |
 | 8 Advanced reports                      | Not started                       |                                                    |                                                                             |
 | 9 Offline hardening                     | Not started                       |                                                    |                                                                             |
 | 10 Release                              | Not started                       |                                                    |                                                                             |
+
+## Phase 5: what was built (2026-10-30)
+
+- **No server changes.** Income is computed on the device from the `payments` (+ `bills`, `sessions`, `stations`) each device already syncs: owners get every branch, managers their branches, cashiers their branches. Works offline; no migration, sync stream or Edge Function. (PLAN's deploy table had "report views" for Phase 5; not needed.)
+- **Domain** `src/domain/income.ts` (not copied to the server): `periodRange` (today / this week / this month in the org time zone, DST-safe through `fromLocal`), `customRange` (both days included, max 366 days, errors `invalid_date` / `end_before_start` / `range_too_long`), `summarizeIncome` (net = payments − refunds; totals by method, branch, station type and local day; void bills and unreadable rows skipped; filter by branch or `received_by`), `utcDateWindow` (loose SQL pre-filter, see Quirks), `datesInRange`, `ranked`, `share`.
+- **App:** route `src/app/(app)/income.tsx` → `src/features/income/IncomeScreen.tsx`, opened from a button on the floor header (**Income** for owners/managers, **My shift** for cashiers). Owners/managers: period picker, custom From/To (`YYYY-MM-DD`), branch filter (2+ branches), total with payment/refund counts, bars by method, by branch (all branches), by station type, by day (ranges over 1 day; every day up to 31 days, otherwise only days with money). Cashiers: their own payments today (total, by method, list with time, station and receipt number).
+- **Station type** of a payment = the type of the session's current station (`sessions.station_id` → `stations.station_type_id`), so a session moved between types counts fully under the last one.
+
+**Verified:** lint, format, typecheck, 170 Jest tests (21 income domain: periods incl. week start, year/month ends, leap February, Cairo's 23-hour DST day, local vs UTC day, refunds on their own day, voids, filters; 5 screen tests: owner today/branch filter/week/custom range errors, cashier only sees their own payments today), web export builds.
+**Not verified:** anything signed in (no backend yet), the screen in Arabic and on a phone, numbers against a real day at the center.
+
+### Phase 5 "done when" still open
+
+- [ ] On the VPS: deploy guide step 7 items 16–17 (owner on a phone sees today's income per method and branch; cashier sees only their own collections).
+- [ ] Check the income screen in Arabic (RTL bars and numbers) and on a phone-sized screen.
 
 ## Phase 4: what was built (2026-10-30)
 
@@ -117,6 +132,11 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Income reports run on the device** from synced payments, not server views: works offline, no new server code. Revisit in Phase 8/9 if history gets too big to sync (see the Phase 3 open item) — then move reports to server-side RPCs.
+- **2026-10-30: Income is counted when the money changes hands** (`paid_at`, device time, org time zone), refunds on their own day; payments on void bills never count.
+- **2026-10-30: Weeks start on Saturday** (`DEFAULT_WEEK_START`). Ask the client; it's one constant.
+- **2026-10-30: The cashier restriction is in the app only.** Cashiers can read their branch's payments in the database (checkout needs them); the app shows them only their own payments today. Enforcing it server-side would need a separate payments feed for checkout.
+
 - **2026-10-30: The final bill is calculated by an Edge Function** (`create-bill`) running the same `src/domain` code, not ported to SQL. Clients can't write amounts: only the service role inserts bills. The device's bill is an estimate until it syncs.
 - **2026-10-30: Bill id = session id**, so two devices can never make two bills for one session, and payments taken on both attach to the same bill.
 - **2026-10-30: The server prices with the rules in force when the bill uploads**, not when the session was played. They only differ if the owner changes prices while a device is offline with an unpaid bill. Revisit if it matters to the client.
@@ -157,6 +177,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Environment quirks (dev PC)
 
+- `payments.paid_at` on the device is ISO text for local rows but Postgres text (`2026-01-05 12:00:00+00`) after sync, so text comparisons are unreliable. Both start with the UTC date: pre-filter with `substr(paid_at, 1, 10) BETWEEN` (`utcDateWindow`, one day wider each side) and do the exact check after `parseTimestamp`.
+- Python on Windows writes CRLF in text mode: open files with `newline=''` when editing them from scripts.
 - **PGlite harness is in the repo** (`scripts/pgcheck/`, `npm run db:check`). Its `tap.sql` used to `grant execute on all functions in schema public to public`, which silently re-opened locked-down functions like `create_bill`; it now grants only the test helpers.
 - Edge Functions need `.ts` extensions on imports; app code imports without them. Never edit `supabase/functions/_shared/domain` by hand: run `npm run domain:sync`.
 - `eslint-plugin-import` can't see `Notifications.AndroidImportance` (re-exported through a types module); it is disabled for that one line.
@@ -193,7 +215,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 5. Run the Phase 3 checks on the VPS (step 7 items 7–10) on web, Windows and a phone; check the new screens in Arabic.
 6. Deploy `create-bill` with the other Edge Functions (step 7b) **before** staff end sessions, then run step 7 items 11–15.
 7. Ask the client: may cashiers give small discounts? Is an on-screen/shared receipt enough (open question 4), and what should it show (logo, address, tax number)?
-8. Phase 5: income dashboard (totals by method, branch and type; a cashier's own collections today). Count income from `payments` (minus refunds, excluding void bills).
+8. Run the Phase 5 checks (step 7 items 16–17) once the VPS is up. Ask the client which day their week starts on and whether cashiers should see anything beyond their own day.
+9. Phase 6: calendar and reservations (MVP pilot).
 
 ### Open items from Phase 4
 

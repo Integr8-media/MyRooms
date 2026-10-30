@@ -137,6 +137,11 @@ Checkout (Phase 4) needs the `create-bill` Edge Function, so do **step 7b first*
 14. **Print or share receipt**: web/Windows opens the print dialog (choose "Save as PDF" to keep a copy); phones open the share sheet with a PDF. Check it in Arabic too.
 15. Offline test: switch Wi-Fi off, end a session and take a cash payment, switch it back on. The bill gets its number, and `payments` has the row. Ended sessions that aren't fully paid are listed under **Waiting for payment** on the floor.
 
+Income (Phase 5) needs no new server parts: it is worked out on each device from the synced payments. After a few bills from items 11–15:
+
+16. As the owner, tap **Income** on the floor: **Today** shows the total, the split by Cash / Visa / Instapay, by branch (with 2+ branches) and by station type, matching the payments in Studio → `payments` (refunds subtracted, void bills left out). Try **This week**, **This month** and a **Custom** range, and pick one branch.
+17. As the cashier, tap **My shift**: only the payments they took themselves today, by method, with each payment listed. No other periods or branches. As a manager, only their branches show.
+
 ## 7b. Edge Functions (required for checkout)
 
 Two functions run in Supabase's `functions` container:
