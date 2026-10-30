@@ -10,13 +10,33 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 1 Accounts, branches, roles             | **Code done, VPS test pending**   | `feature/phase-1-accounts` (not committed)         | 59 pgTAP checks pass on PGlite; signed-in screens need a backend            |
 | 2 Stations and pricing                  | **Code done, VPS test pending**   | `feature/phase-2-stations-pricing` (not committed) | 100 pgTAP checks pass on PGlite; pricing + time-zone code has 31 unit tests |
 | 3 Live floor and walk-ins               | **Code done, VPS test pending**   | `feature/phase-3-sessions` (not committed)         | 158 pgTAP checks pass on PGlite; 116 Jest tests                             |
-| 4 Checkout and payments                 | Not started                       |                                                    |                                                                             |
+| 4 Checkout and payments                 | **Code done, VPS test pending**   | `feature/phase-4-billing` (not committed)          | 212 pgTAP checks pass on PGlite; 144 Jest tests                             |
 | 5 Income dashboard                      | Not started                       |                                                    |                                                                             |
 | 6 Calendar and reservations (MVP pilot) | Not started                       |                                                    |                                                                             |
 | 7 Optional modules                      | Not started                       |                                                    |                                                                             |
 | 8 Advanced reports                      | Not started                       |                                                    |                                                                             |
 | 9 Offline hardening                     | Not started                       |                                                    |                                                                             |
 | 10 Release                              | Not started                       |                                                    |                                                                             |
+
+## Phase 4: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261101000000_phase4_billing.sql`): `bills` (one per completed session, **`bills.id = session id`** so two devices checking out the same session make the same bill; `number` per branch from `private.bill_counters`; `time_amount`, `items_amount` (0 until Phase 7), `discount_amount`, `total`, `paid_amount`, `status` open/partially_paid/paid/void, `details` jsonb with the priced lines, discount/void who/why/when, `closed_by`, `closed_at` = session end) and `payments` (kind payment/refund, method cash/visa/instapay, positive `amount`, `reference`, `reason`, `received_by` forced to the caller, `paid_at` device time). `total`/`paid_amount`/`status` are kept by triggers, not generated columns (generated columns don't go through logical replication to PowerSync).
+- **Server-side bill:** only `public.create_bill(session, time_amount, details, actor)` inserts bills, and only the **service role** may call it. The **`create-bill` Edge Function** reads the session, segments, time zone, rules and package _as the caller_ (RLS), prices it with `src/domain` and calls `create_bill`. Idempotent. The PowerSync connector sends a local `bills` INSERT to this function instead of the REST insert (400/403/409 = dropped like other rejected writes; 401/404/5xx/network = retried, which blocks the queue until the function is deployed).
+- **Shared code for Deno:** `scripts/sync-domain.mjs` copies `money`, `zoned-time`, `pricing`, `sessions`, `billing` from `src/domain` to `supabase/functions/_shared/domain` with `.ts` import extensions (`npm run domain:sync`). `src/domain/server-copy.test.ts` fails if the copy is stale. The copy also runs under `node --experimental-strip-types`.
+- **Rules:** everyone in the branch takes payments (split across methods). Owners + branch managers: discount (only before any payment, at most the subtotal), refund (reason required, at most what was paid), void (reason required, final; the bill no longer counts, payments stay). Overpayment is **accepted** by the server (an offline payment must never be lost); the app blocks it and shows "paid too much". Payments are never updated or deleted. Audit: bill insert (actor = closed_by), discount and void changes, every payment and refund (`audit_row`).
+- **Domain** `src/domain/billing.ts`: row mappers shared by app and server (`rateRuleFromRow`, `packageFromRow`, `segmentFromRow`), `computeFinalBill` (a running segment is charged up to the session end, nothing after it; reports `gapMinutes` and `uncoveredMinutes`), `parseBillDetails`, `billFromDetails`, `netPaid`, `billStatus` (mirrors the SQL), due/overpaid/change, percent discount, payment/refund/discount validation.
+- **App:** ending a session creates the bill locally in the same transaction and opens **Checkout** (`src/app/(app)/checkout/[id].tsx`, `src/features/checkout/`): breakdown with a discount line, gap/unpriced warnings, total/paid/due, payments list, payment form (method, amount defaulting to what's due, cash received → change, reference for Visa/Instapay), discount (amount or %), refund and void with inline confirmation, receipt. On the device, totals and status come from the bill amounts + local payments (never from `bills.total/paid_amount/status`, which only change on the server). The floor lists **Waiting for payment** (completed sessions with no bill or not fully paid). Older sessions without a bill get a "Make the bill" button.
+- **Receipt:** `receipt.ts` builds standalone HTML (RTL in Arabic). Phones: `expo-print` → PDF → `expo-sharing` share sheet. Web/Windows: hidden iframe + `print()` (expo-print on web prints the whole page). The `expo-sharing` config plugin was removed from app.json (it is only needed to _receive_ shares).
+- **PGlite harness moved into the repo:** `scripts/pgcheck/` (`npm --prefix scripts/pgcheck install` once, then `npm run db:check`: migrations + all pgTAP files, then the sync config check). `node scripts/pgcheck/run.mjs . phase4` runs one file.
+
+**Verified:** lint, format, typecheck, 144 Jest tests (billing domain, server-copy check, checkout screen: full/split/too-large payments, change, permissions, percent discount, no discount after payment, void, unsynced number, older sessions, receipt HTML in EN/AR), web export, Android JS bundle, expo-doctor 20/20. 6 migrations + 212 pgTAP checks (59 + 41 + 58 + 54) pass on PGlite; granting `create_bill` to clients, letting cashiers refund, or not forcing `received_by` each make tests fail. Sync config validates. The domain copy gives the same bill under Node's TypeScript stripping.
+**Not verified:** the Edge Function in Deno or on the VPS (no Deno or Docker here), anything signed in, printing/sharing on real devices and in Tauri, the new screens in Arabic and on a phone, the real pgTAP run.
+
+### Phase 4 "done when" still open
+
+- [ ] Deploy `create-bill` (deploy step 7b) and run step 7 items 11–15 on web, Windows and a phone.
+- [ ] Check that a bill calculated on the server matches the device estimate for a session with a player change and a package.
+- [ ] Check checkout and the receipt in Arabic and on a phone-sized screen; print a receipt from Windows (Tauri WebView2).
 
 ## Phase 3: what was built (2026-10-30)
 
@@ -97,6 +117,13 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: The final bill is calculated by an Edge Function** (`create-bill`) running the same `src/domain` code, not ported to SQL. Clients can't write amounts: only the service role inserts bills. The device's bill is an estimate until it syncs.
+- **2026-10-30: Bill id = session id**, so two devices can never make two bills for one session, and payments taken on both attach to the same bill.
+- **2026-10-30: The server prices with the rules in force when the bill uploads**, not when the session was played. They only differ if the owner changes prices while a device is offline with an unpaid bill. Revisit if it matters to the client.
+- **2026-10-30: Early-end times are not clamped or audited.** Device times are kept (offline uploads are legitimately late); `bills.created_at` (server) next to `closed_at` (device) lets reports spot a wrong clock later.
+- **2026-10-30: Discounts only before any payment**, by owners and branch managers. Cashiers can't discount (ask the client whether they need a small allowance).
+- **2026-10-30: Overpayments are accepted by the server**, refunds correct mistakes, payments are immutable. Voiding should come after refunding (the UI says so; the server doesn't enforce it, and void bills don't count as income).
+
 - **2026-10-30: Session times come from the device** (sessions start offline). The server checks they make sense (end ≥ start, segments don't overlap) but not that the clock is right. A cashier can still end a session with an early time; Phase 4 should decide whether to audit or clamp ends far from the upload time.
 - **2026-10-30: Only cancellations are audited in Phase 3**; bills and payments get their audit in Phase 4. Cancel = owners and branch managers.
 - **2026-10-30: A session with a package can only move to a station of the same type** (packages belong to one type). The UI explains it; the server rejects it (`invalid_package`).
@@ -130,11 +157,11 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Environment quirks (dev PC)
 
-- **PGlite harness for Phase 3** is in this session's scratchpad (`45b97e9f-…/scratchpad/pgcheck`, run `node run.mjs <repo>`). Moving it into the repo (`scripts/pgcheck/`) is still worth doing.
+- **PGlite harness is in the repo** (`scripts/pgcheck/`, `npm run db:check`). Its `tap.sql` used to `grant execute on all functions in schema public to public`, which silently re-opened locked-down functions like `create_bill`; it now grants only the test helpers.
+- Edge Functions need `.ts` extensions on imports; app code imports without them. Never edit `supabase/functions/_shared/domain` by hand: run `npm run domain:sync`.
 - `eslint-plugin-import` can't see `Notifications.AndroidImportance` (re-exported through a types module); it is disabled for that one line.
 - Jest: variables used inside `jest.mock` factories must be named `mock…`.
 
-- **PGlite harness location:** copied into each session's scratchpad (`pgcheck/run.mjs <repo>`, `stub.sql`, `tap.sql`, `validate-sync.mjs`); the original is in the scratchpad of session `589f6d80-…`. Consider moving it into the repo (e.g. `scripts/pgcheck/`) if it keeps being needed.
 - PowerSync tables are SQLite views: `INSERT … RETURNING` isn't available; get an id with `SELECT uuid() AS id` first.
 
 - **Testing SQL without Docker:** run the migrations and pgTAP files in PGlite (`@electric-sql/pglite`) with a stand-in for Supabase (roles `anon`/`authenticated`, `auth.users`, `auth.uid()`/`auth.jwt()`, default grants) and a tiny pgTAP subset (plan/ok/is/is_empty/results_eq/lives_ok/throws_ok). PGlite has no pgTAP extension. The harness lived in the session scratchpad, not the repo.
@@ -164,7 +191,15 @@ Running log of progress, decisions and open items. Update it at the end of every
 3. Push the branch so CI runs the pgTAP tests on real Supabase.
 4. Ask the client for their real price list (types, hourly prices, peak/weekend rules, packages) and a few real bills, to enter and check in Phase 2's price preview.
 5. Run the Phase 3 checks on the VPS (step 7 items 7–10) on web, Windows and a phone; check the new screens in Arabic.
-6. Phase 4: checkout and payments. Server-side final bill from `session_segments` (reuse `src/domain/pricing.ts`); decide on clamping/auditing early ends; an "ended, not paid" list on the floor so cashiers find sessions to check out.
+6. Deploy `create-bill` with the other Edge Functions (step 7b) **before** staff end sessions, then run step 7 items 11–15.
+7. Ask the client: may cashiers give small discounts? Is an on-screen/shared receipt enough (open question 4), and what should it show (logo, address, tax number)?
+8. Phase 5: income dashboard (totals by method, branch and type; a cashier's own collections today). Count income from `payments` (minus refunds, excluding void bills).
+
+### Open items from Phase 4
+
+- If `create-bill` is missing or answers 5xx, a device's upload queue stops at the bill (nothing lost, but nothing after it uploads). Consider a "waiting on the server" hint in the sync card (Phase 9).
+- A bill the server rejects (e.g. because its session's end was rejected) disappears together with any payments taken for it on the device. Same conflict UI as Phases 6/9.
+- The server doesn't require refunds before a void. Reports must exclude void bills' payments.
 
 ### Open items from Phase 3
 

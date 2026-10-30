@@ -1,6 +1,7 @@
 import type { Transaction } from '@powersync/common';
 
 import { extendEnd, parseTimestamp, plannedEnd, type SessionKind } from '@/domain/sessions';
+import { insertBill } from '@/features/checkout/api';
 import { powersync } from '@/lib/powersync/database';
 
 /**
@@ -244,10 +245,12 @@ async function close(sessionId: string, status: 'completed' | 'cancelled', now: 
       iso(now),
       sessionId,
     ]);
+    // Ending makes the bill (an estimate until the server prices it, see checkout/api.ts).
+    if (status === 'completed') await insertBill(tx, sessionId, now);
   });
 }
 
-/** Stop the timer. The bill is taken at checkout. */
+/** Stop the timer and make the bill. Payment is taken at checkout. */
 export function endSession(sessionId: string, now = Date.now()) {
   return close(sessionId, 'completed', now);
 }

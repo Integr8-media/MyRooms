@@ -32,6 +32,17 @@ describe('permissions', () => {
     expect(can('cashier', 'sessions.cancel')).toBe(false);
   });
 
+  it('everyone takes payments; only owners and managers discount, refund and void', () => {
+    for (const role of ['owner', 'manager', 'cashier'] as const) {
+      expect(can(role, 'bills.pay')).toBe(true);
+    }
+    for (const permission of ['bills.discount', 'bills.refund', 'bills.void'] as const) {
+      expect(can('owner', permission)).toBe(true);
+      expect(can('manager', permission)).toBe(true);
+      expect(can('cashier', permission)).toBe(false);
+    }
+  });
+
   it('no role means no permissions', () => {
     expect(can(null, 'staff.view')).toBe(false);
     expect(can(undefined, 'branches.edit')).toBe(false);

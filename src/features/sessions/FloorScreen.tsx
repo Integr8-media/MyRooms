@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions, View } from 'react-native';
 
 import { floorStatus, type FloorStatus } from '@/domain/sessions';
+import { UnpaidList } from '@/features/checkout/UnpaidList';
 import { SyncStatusCard } from '@/features/sync/SyncStatusCard';
 import { BranchSwitcher } from '@/features/workspace/BranchSwitcher';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
@@ -159,6 +160,8 @@ export function FloorScreen() {
           </View>
         ))}
       </View>
+
+      <UnpaidList branchId={branch?.id} />
 
       <SyncStatusCard />
     </Screen>

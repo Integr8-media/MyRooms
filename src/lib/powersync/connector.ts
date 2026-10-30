@@ -14,6 +14,35 @@ import { getSupabase } from '@/lib/supabase/client';
  */
 const FATAL_RESPONSE_CODES = [/^22...$/, /^23...$/, /^42501$/];
 
+/** An upload the server refused for good (same shape as a Postgres error). */
+class RejectedUpload extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * A new bill is not inserted directly: the create-bill Edge Function prices the session on
+ * the server and saves the bill (clients can't write amounts). 400/403/409 are final; network
+ * errors, 401 (expired token), 404 (function not deployed yet) and 5xx are retried later.
+ */
+async function uploadBill(sessionId: string) {
+  const { error } = await getSupabase().functions.invoke('create-bill', {
+    body: { session_id: sessionId },
+  });
+  if (!error) return;
+  const response = (error as { context?: unknown }).context;
+  if (response instanceof Response && [400, 403, 409].includes(response.status)) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    const key = body?.error ?? 'invalid_session';
+    throw new RejectedUpload(key, response.status === 403 ? '42501' : '23514');
+  }
+  throw error;
+}
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
     const { data, error } = await getSupabase().auth.getSession();
@@ -35,6 +64,10 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         let result;
         switch (op.op) {
           case UpdateType.PUT:
+            if (op.table === 'bills') {
+              await uploadBill(String(op.opData?.session_id ?? op.id));
+              continue;
+            }
             // A local INSERT. Plain insert (ON CONFLICT DO NOTHING) so a retried upload
             // is harmless and no UPDATE privilege is needed on server-owned columns.
             result = await table.upsert({ ...op.opData, id: op.id }, { ignoreDuplicates: true });

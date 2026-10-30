@@ -1,6 +1,7 @@
 import { useQuery } from '@powersync/react';
 import { useEffect, useState } from 'react';
 
+import { segmentFromRow } from '@/domain/billing';
 import { priceSession, type Bill, type HourPackage, type RateRule } from '@/domain/pricing';
 import { parseTimestamp, toPricingSegments, type SessionTiming } from '@/domain/sessions';
 import { toPackage, toRateRule } from '@/features/pricing/data';
@@ -128,14 +129,9 @@ export function estimateSession(
 ): Bill | null {
   const records = [];
   for (const g of segments) {
-    const startedAt = parseTimestamp(g.started_at);
-    if (startedAt == null || !g.station_type_id) return null;
-    records.push({
-      stationTypeId: g.station_type_id,
-      players: g.players ?? 1,
-      startedAt,
-      endedAt: parseTimestamp(g.ended_at),
-    });
+    const record = segmentFromRow(g);
+    if (!record) return null;
+    records.push(record);
   }
   if (!records.length) return null;
   try {
