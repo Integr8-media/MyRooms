@@ -10,8 +10,11 @@ type SettingsState = {
   /** null = follow the device language. */
   language: Language | null;
   theme: ThemePreference;
+  /** Notify on this device when fixed sessions are ending, end, and run over time. */
+  sessionAlerts: boolean;
   setLanguage: (language: Language) => void;
   setTheme: (theme: ThemePreference) => void;
+  setSessionAlerts: (on: boolean) => void;
 };
 
 /** Per-device UI preferences (not synced). */
@@ -20,13 +23,15 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       language: null,
       theme: 'system',
+      sessionAlerts: true,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
+      setSessionAlerts: (sessionAlerts) => set({ sessionAlerts }),
     }),
     {
       name: 'myrooms-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ language, theme }) => ({ language, theme }),
+      partialize: ({ language, theme, sessionAlerts }) => ({ language, theme, sessionAlerts }),
     },
   ),
 );

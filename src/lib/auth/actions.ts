@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '@/lib/settings/workspace-store';
 import { getSupabase } from '@/lib/supabase/client';
 
 import { authRedirectUrl } from './redirect';
+import { scheduleAlerts } from '@/lib/notifications/alerts';
 
 export async function signIn(email: string, password: string) {
   const { error } = await getSupabase().auth.signInWithPassword({ email, password });
@@ -47,6 +48,8 @@ export async function updateDisplayName(fullName: string) {
  * should warn first (see usePendingUploads).
  */
 export async function signOut() {
+  // Scheduled session alerts belong to this account's branch.
+  await scheduleAlerts([]).catch(() => {});
   await powersync.disconnectAndClear();
   useWorkspaceStore.getState().reset();
   const supabase = getSupabase();

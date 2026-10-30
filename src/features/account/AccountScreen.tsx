@@ -5,6 +5,7 @@ import { profileSchema, validate, type ValidationKey } from '@/domain/validation
 import { SetPasswordForm } from '@/features/auth/SetPasswordForm';
 import { ErrorNotice } from '@/features/common/ErrorNotice';
 import { InvitationsList } from '@/features/onboarding/InvitationsList';
+import { AlertSettings } from '@/features/settings/AlertSettings';
 import { AppearanceSettings } from '@/features/settings/AppearanceSettings';
 import { usePendingUploads } from '@/features/sync/usePendingUploads';
 import { signOut, updateDisplayName } from '@/lib/auth/actions';
@@ -70,6 +71,7 @@ export function AccountScreen() {
 
       <InvitationsList />
       <AppearanceSettings />
+      <AlertSettings />
 
       <Card>
         {confirmSignOut ? (

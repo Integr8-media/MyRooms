@@ -24,6 +24,10 @@ const RULES = {
   'prices.edit': ['owner'],
   /** Add/edit stations and switch maintenance on/off. Managers: only their branches. */
   'stations.edit': ['owner', 'manager'],
+  /** Start, extend, change players, move and end walk-in sessions in the user's branches. */
+  'sessions.run': ['owner', 'manager', 'cashier'],
+  /** Cancel a session so it is never billed. Audited. Managers: only their branches. */
+  'sessions.cancel': ['owner', 'manager'],
   // Used from Phase 5 onwards.
   'income.view': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;

@@ -264,6 +264,18 @@ export const pricePreviewSchema = z.object({
   packageId: z.string().nullable(),
 });
 
+// ---------------------------------------------------------------------------
+// Walk-in sessions (Phase 3)
+// ---------------------------------------------------------------------------
+
+/** Longest fixed session or extension, in minutes (as for packages). */
+export const MAX_SESSION_MINUTES = 1440;
+
+/** Custom duration in minutes, typed as text. */
+export const sessionMinutesField = intField(1, MAX_SESSION_MINUTES);
+
+export const sessionNoteSchema = z.string().trim().max(200, 'tooLong');
+
 export type ValidationKey =
   | 'required'
   | 'tooLong'

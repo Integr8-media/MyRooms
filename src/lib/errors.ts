@@ -17,6 +17,13 @@ export const ERROR_KEYS = [
   'last_owner',
   'invalid_timezone',
   'invalid_station_type',
+  'invalid_station',
+  'station_unavailable',
+  'station_busy',
+  'invalid_session',
+  'session_closed',
+  'invalid_package',
+  'too_many_players',
   // Supabase Auth error codes.
   'invalid_credentials',
   'email_exists',

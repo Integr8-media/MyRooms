@@ -1,0 +1,178 @@
+/**
+ * Live floor and walk-in session rules (Phase 3). Pure TypeScript, no React.
+ *
+ * A session is made of segments: a new one starts when the player count changes or the
+ * group moves to another station. Segments map 1:1 onto pricing segments.
+ */
+import type { Segment } from './pricing';
+import { MINUTE_MS } from './zoned-time';
+
+export const SESSION_KINDS = ['open', 'fixed'] as const;
+export type SessionKind = (typeof SESSION_KINDS)[number];
+
+/** "Ending soon" starts this long before the planned end. */
+export const ENDING_SOON_MS = 5 * MINUTE_MS;
+/** A reminder this long after the planned end if the group is still playing. */
+export const OVERTIME_REMINDER_MS = 15 * MINUTE_MS;
+
+/** Quick choices when starting or extending a fixed session. */
+export const DURATION_CHOICES = [30, 60, 90, 120, 180] as const;
+export const EXTEND_CHOICES = [15, 30, 60] as const;
+
+/**
+ * Parse a timestamp from the local database: ISO from this device ("2026-01-05T12:00:00.000Z")
+ * or Postgres text from sync ("2026-01-05 12:00:00.123456+00"). Returns null if unreadable.
+ */
+export function parseTimestamp(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const m =
+    /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/i.exec(
+      value.trim(),
+    );
+  if (!m) return null;
+  const [, date, time, fraction = '', zone = 'Z'] = m;
+  const ms = fraction.slice(0, 3).padEnd(3, '0');
+  let offset = zone.toUpperCase();
+  if (offset !== 'Z') {
+    const digits = offset.slice(1).replace(':', '').padEnd(4, '0');
+    offset = `${offset[0]}${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+  }
+  const seconds = time!.length === 5 ? `${time}:00` : time;
+  const parsed = Date.parse(`${date}T${seconds}.${ms}${offset}`);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+export type FloorStatus = 'free' | 'active' | 'ending_soon' | 'overtime' | 'maintenance';
+
+export type SessionTiming = {
+  /** UTC epoch ms. */
+  start: number;
+  /** Fixed sessions only. */
+  scheduledEnd: number | null;
+};
+
+/** What a station card shows. A running session wins over maintenance (it must still be ended). */
+export function floorStatus(
+  station: { status: string | null },
+  session: SessionTiming | null,
+  now: number,
+): FloorStatus {
+  if (session) {
+    if (session.scheduledEnd == null) return 'active';
+    if (now >= session.scheduledEnd) return 'overtime';
+    if (now >= session.scheduledEnd - ENDING_SOON_MS) return 'ending_soon';
+    return 'active';
+  }
+  return station.status === 'maintenance' ? 'maintenance' : 'free';
+}
+
+export function elapsedMs(session: SessionTiming, now: number): number {
+  return Math.max(0, now - session.start);
+}
+
+/** Time left on a fixed session: negative when over time, null for open sessions. */
+export function remainingMs(session: SessionTiming, now: number): number | null {
+  return session.scheduledEnd == null ? null : session.scheduledEnd - now;
+}
+
+/** "1:05:09" / "4:09", with a leading "-" for negative values (over time). */
+export function formatTimer(ms: number): string {
+  const sign = ms < 0 ? '-' : '';
+  const total = Math.floor(Math.abs(ms) / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h ? `${sign}${h}:${pad(m)}:${pad(s)}` : `${sign}${m}:${pad(s)}`;
+}
+
+/** The planned end of a fixed session started at `start` for `minutes`. */
+export function plannedEnd(start: number, minutes: number): number {
+  return start + minutes * MINUTE_MS;
+}
+
+/**
+ * Extending adds time to the planned end. If the group is already over time, the extra
+ * time counts from the planned end, not from now (the overtime is still played time).
+ */
+export function extendEnd(scheduledEnd: number, minutes: number): number {
+  return scheduledEnd + minutes * MINUTE_MS;
+}
+
+export type SegmentRecord = {
+  stationTypeId: string;
+  players: number;
+  /** UTC epoch ms. */
+  startedAt: number;
+  /** null: still running. */
+  endedAt: number | null;
+};
+
+/** Segments as pricing input; a running segment is priced up to `now`. */
+export function toPricingSegments(segments: readonly SegmentRecord[], now: number): Segment[] {
+  return [...segments]
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .map((s) => ({
+      start: s.startedAt,
+      end: Math.max(s.startedAt, s.endedAt ?? now),
+      players: s.players,
+      stationTypeId: s.stationTypeId,
+    }));
+}
+
+export type AlertKind = 'ending_soon' | 'ended' | 'overtime';
+
+export type SessionAlert = {
+  /** Stable while the planned end doesn't change; extending makes new keys. */
+  key: string;
+  sessionId: string;
+  kind: AlertKind;
+  /** When it should fire (UTC epoch ms). */
+  at: number;
+};
+
+/** The three alerts of a fixed session: 5 minutes before the end, at the end, 15 minutes over. */
+export function alertsForSession(sessionId: string, scheduledEnd: number): SessionAlert[] {
+  const make = (kind: AlertKind, at: number): SessionAlert => ({
+    key: `${sessionId}:${kind}:${scheduledEnd}`,
+    sessionId,
+    kind,
+    at,
+  });
+  return [
+    make('ending_soon', scheduledEnd - ENDING_SOON_MS),
+    make('ended', scheduledEnd),
+    make('overtime', scheduledEnd + OVERTIME_REMINDER_MS),
+  ];
+}
+
+/** Alerts still in the future: what a phone should have scheduled right now. */
+export function upcomingAlerts(
+  sessions: readonly { id: string; scheduledEnd: number | null }[],
+  now: number,
+): SessionAlert[] {
+  return sessions
+    .flatMap((s) => (s.scheduledEnd == null ? [] : alertsForSession(s.id, s.scheduledEnd)))
+    .filter((a) => a.at > now);
+}
+
+/**
+ * Alerts to show now on a device that checks on a timer (web, Windows). Only the latest
+ * due alert of each session is shown, and only if it became due within `graceMs` (so an app
+ * opened an hour later doesn't replay old alerts). `fired` holds keys already shown.
+ */
+export function dueAlerts(
+  sessions: readonly { id: string; scheduledEnd: number | null }[],
+  now: number,
+  fired: ReadonlySet<string>,
+  graceMs = 2 * MINUTE_MS,
+): SessionAlert[] {
+  const out: SessionAlert[] = [];
+  for (const s of sessions) {
+    if (s.scheduledEnd == null) continue;
+    const due = alertsForSession(s.id, s.scheduledEnd).filter((a) => a.at <= now);
+    const latest = due[due.length - 1];
+    if (latest && !fired.has(latest.key) && now - latest.at <= graceMs) out.push(latest);
+  }
+  return out;
+}

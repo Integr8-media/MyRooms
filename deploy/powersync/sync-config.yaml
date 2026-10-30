@@ -4,7 +4,7 @@
 #   manager  their branches, the staff of those branches, invitations they sent
 #   cashier  their branches and their own membership
 #   everyone station types, rate rules and packages of their organizations (to price sessions),
-#            and the stations of the branches they work in
+#            and the stations and sessions (with segments) of the branches they work in
 config:
   edition: 3
 
@@ -38,6 +38,8 @@ streams:
     queries:
       - SELECT * FROM branches WHERE id IN my_branches
       - SELECT * FROM stations WHERE branch_id IN my_branches
+      - SELECT * FROM sessions WHERE branch_id IN my_branches
+      - SELECT * FROM session_segments WHERE branch_id IN my_branches
 
   # Owners: every branch, member and invitation of their organizations.
   owner_data:
@@ -47,6 +49,8 @@ streams:
     queries:
       - SELECT * FROM branches WHERE org_id IN owned_orgs
       - SELECT * FROM stations WHERE org_id IN owned_orgs
+      - SELECT * FROM sessions WHERE org_id IN owned_orgs
+      - SELECT * FROM session_segments WHERE org_id IN owned_orgs
       - SELECT * FROM memberships WHERE org_id IN owned_orgs
       - SELECT * FROM member_branches WHERE org_id IN owned_orgs
       - SELECT * FROM invitations WHERE org_id IN owned_orgs

@@ -124,6 +124,10 @@ Restart the app, then check the whole flow:
 4. Settings → Staff → **Invite** a second email as Cashier for one branch. Sign in with that email on another device or browser: the invitation shows on the welcome screen; **Join** it. The cashier sees only that branch and no Staff or Branches settings.
 5. As the owner: Settings → **Station types & prices** → add a type (e.g. PS5 Room, 4 players), a base price, a peak price (18:00–24:00, priority 10) and a 3-hour package. Then Settings → **Stations** → add 3 stations at once and put one in maintenance. The cashier sees the stations and the prices (read-only) and can't add stations.
 6. Settings → **Price preview**: 17:00 to 19:30 should cost 1 hour at the base price plus 1.5 hours at the peak price.
+7. **Live floor** (home screen): tap a free station → **Start session** (Open). The card turns blue and its timer and cost run. On the cashier's device the same station shows as playing within a few seconds. The station in maintenance can't be tapped.
+8. Start a **Fixed time** session of 30 min on another station, then open it and **Add time** +15 min; change the players (if the type allows more than 1) and **Move** it to a free station. **End** it after confirming: the estimated bill lists each part.
+9. Alerts: Settings → Account → **Session alerts** → allow notifications. Start a fixed session with a custom duration of 6 minutes: about a minute later you get "5 minutes left", then "time is up" (web/Windows: the app must be open; phones: works in the background).
+10. As the cashier, open a running session: there is no **Cancel session** button (owners and managers only). Offline test: switch Wi-Fi off, start and end a session, switch it back on; the session appears in Studio → `sessions`.
 
 ## 7b. Invitation emails (Edge Function)
 
@@ -154,6 +158,7 @@ Check: `https://app.example.com` loads the sign-in page; after signing in, the S
 - **Locally:** `npm run desktop:build` (uses `.env.local`; set `EXPO_PUBLIC_APP_URL` so password-reset emails sent from Windows link to the web app). The installer is in `src-tauri/target/release/bundle/nsis/`. If the build fails with `windres`, see Troubleshooting in the main README.
 - **From GitHub:** set the `EXPO_PUBLIC_*` values (including `EXPO_PUBLIC_APP_URL`) as repository **Variables** (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to `dev` and `main` (or by hand) and uploads the installer as a build artifact.
 - The installer is not code-signed yet (Phase 10), so Windows SmartScreen will warn on install.
+- Session alerts use the Tauri notification plugin (added in Phase 3); rebuild the installer after updating.
 
 ## 10. Build the Android and iOS apps
 
@@ -169,6 +174,8 @@ npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_UR
 npx eas-cli build --profile development --platform android   # installable test build (APK)
 npx eas-cli build --profile development --platform ios       # needs an Apple Developer account
 ```
+
+Phase 3 added `expo-notifications` (native code), so phones need a **new development build** after updating. Only local notifications are used: no push keys (FCM/APNs) are needed.
 
 Store releases (Google Play, App Store) come in Phase 10.
 

@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { formatMoney } from '@/domain/money';
 import { priceSession, type Bill } from '@/domain/pricing';
 import { pricePreviewSchema, validate, type FieldErrors } from '@/domain/validation';
 import { dateKey, formatClock, fromLocal, toLocal } from '@/domain/zoned-time';
@@ -11,8 +10,8 @@ import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import type { PackageRow, RateRuleRow } from '@/lib/powersync/schema';
 import { Card, Notice, Screen, ScreenHeader, SegmentedControl, Text, TextField } from '@/ui';
 
+import { BillBreakdown } from './BillBreakdown';
 import { toPackage, toRateRule, useStationTypes } from './data';
-import { formatDuration } from './format';
 
 type Fields = {
   stationTypeId: string;
@@ -173,79 +172,7 @@ export function PricePreviewScreen() {
       )}
 
       {rangeError ? <Notice tone="danger" message={rangeError} /> : null}
-      {bill ? <BillBreakdown bill={bill} timeZone={timeZone} /> : null}
+      {bill ? <BillBreakdown bill={bill} timeZone={timeZone} testID="preview" /> : null}
     </Screen>
-  );
-}
-
-function BillBreakdown({ bill, timeZone }: { bill: Bill; timeZone: string }) {
-  const { t, i18n } = useTranslation();
-  const money = (amount: number) => formatMoney(amount, i18n.language);
-  const clock = (instant: number) => {
-    const l = toLocal(instant, timeZone);
-    return formatClock(l.hour * 60 + l.minute);
-  };
-
-  return (
-    <Card className="gap-2" testID="preview-bill">
-      <Text variant="heading">{t('pricing.breakdown')}</Text>
-      {bill.package ? (
-        <Row
-          label={t('pricing.packageLine', { name: bill.package.name })}
-          detail={formatDuration(bill.package.minutes, t)}
-          amount={money(bill.package.price)}
-        />
-      ) : null}
-      {bill.lines.map((line) => (
-        <Row
-          key={`${line.start}`}
-          label={
-            line.coveredByPackage
-              ? t('pricing.coveredByPackage')
-              : line.ruleId
-                ? line.ruleName || t('pricing.unnamedRule')
-                : t('pricing.noRate')
-          }
-          detail={`${clock(line.start)}–${clock(line.end)} · ${formatDuration(line.minutes, t)}${
-            line.ruleId ? ` · ${t('pricing.perHour', { price: money(line.pricePerHour) })}` : ''
-          }`}
-          amount={line.coveredByPackage ? '—' : money(line.amount)}
-          danger={!line.coveredByPackage && !line.ruleId}
-        />
-      ))}
-      <View className="mt-2 flex-row items-center border-t border-border pt-2">
-        <Text variant="heading" className="flex-1">
-          {t('pricing.total', { duration: formatDuration(bill.totalMinutes, t) })}
-        </Text>
-        <Text variant="heading" testID="preview-total">
-          {money(bill.total)}
-        </Text>
-      </View>
-      {bill.uncovered.length ? (
-        <Notice tone="warning" message={t('pricing.uncoveredWarning')} testID="preview-uncovered" />
-      ) : null}
-    </Card>
-  );
-}
-
-function Row({
-  label,
-  detail,
-  amount,
-  danger,
-}: {
-  label: string;
-  detail: string;
-  amount: string;
-  danger?: boolean;
-}) {
-  return (
-    <View className="flex-row items-center gap-3">
-      <View className="flex-1 gap-0.5">
-        <Text className={danger ? 'font-medium text-danger' : 'font-medium'}>{label}</Text>
-        <Text variant="muted">{detail}</Text>
-      </View>
-      <Text>{amount}</Text>
-    </View>
   );
 }
