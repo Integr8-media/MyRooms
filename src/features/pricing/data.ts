@@ -1,29 +1,16 @@
 import { useQuery } from '@powersync/react';
 
+import { packageFromRow, rateRuleFromRow } from '@/domain/billing';
 import type { HourPackage, RateRule } from '@/domain/pricing';
 import type { PackageRow, RateRuleRow, StationTypeRow } from '@/lib/powersync/schema';
 
-/** Local database rows -> pricing module types. */
+/** Local database rows -> pricing module types (shared with the server, see src/domain/billing.ts). */
 export function toRateRule(row: RateRuleRow): RateRule {
-  return {
-    id: row.id,
-    stationTypeId: row.station_type_id ?? '',
-    name: row.name,
-    pricePerHour: row.price_per_hour ?? 0,
-    playersMin: row.players_min,
-    playersMax: row.players_max,
-    daysOfWeek: row.days_of_week ?? 0,
-    fromMinute: row.from_minute,
-    toMinute: row.to_minute,
-    priority: row.priority ?? 0,
-    // Postgres dates arrive as "YYYY-MM-DD"; keep only the date part to be safe.
-    validFrom: row.valid_from?.slice(0, 10) ?? null,
-    validTo: row.valid_to?.slice(0, 10) ?? null,
-  };
+  return rateRuleFromRow(row);
 }
 
 export function toPackage(row: PackageRow): HourPackage {
-  return { id: row.id, name: row.name ?? '', minutes: row.minutes ?? 0, price: row.price ?? 0 };
+  return packageFromRow(row);
 }
 
 export function useStationTypes(orgId: string | null | undefined) {

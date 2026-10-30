@@ -28,6 +28,14 @@ const RULES = {
   'sessions.run': ['owner', 'manager', 'cashier'],
   /** Cancel a session so it is never billed. Audited. Managers: only their branches. */
   'sessions.cancel': ['owner', 'manager'],
+  /** Check out ended sessions and take payments (split across methods allowed). */
+  'bills.pay': ['owner', 'manager', 'cashier'],
+  /** Give a discount, before any payment. Audited. Managers: only their branches. */
+  'bills.discount': ['owner', 'manager'],
+  /** Give money back (with a reason). Audited. Managers: only their branches. */
+  'bills.refund': ['owner', 'manager'],
+  /** Void a bill so it doesn't count (with a reason). Audited. Managers: only their branches. */
+  'bills.void': ['owner', 'manager'],
   // Used from Phase 5 onwards.
   'income.view': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;

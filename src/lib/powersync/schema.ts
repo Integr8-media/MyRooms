@@ -176,6 +176,57 @@ const session_segments = new Table(
   { indexes: { session: ['session_id'], branch: ['branch_id'] } },
 );
 
+/**
+ * One bill per completed session (id = session id). Amounts are piasters. The server
+ * calculates time_amount and keeps total / paid_amount / status up to date; on the device,
+ * derive the total and what was paid from the columns and the local payments instead
+ * (see src/domain/billing.ts), so offline changes show at once. details is JSON text.
+ */
+const bills = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    session_id: column.text,
+    number: column.integer,
+    time_amount: column.integer,
+    items_amount: column.integer,
+    discount_amount: column.integer,
+    total: column.integer,
+    paid_amount: column.integer,
+    status: column.text,
+    details: column.text,
+    discount_reason: column.text,
+    discount_by: column.text,
+    void_reason: column.text,
+    voided_by: column.text,
+    voided_at: column.text,
+    closed_by: column.text,
+    closed_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { branch_status: ['branch_id', 'status'] } },
+);
+
+/** Money received (kind 'payment') or given back ('refund'). Never updated or deleted. */
+const payments = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    bill_id: column.text,
+    kind: column.text,
+    method: column.text,
+    amount: column.integer,
+    reference: column.text,
+    reason: column.text,
+    received_by: column.text,
+    paid_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { bill: ['bill_id'], branch_paid: ['branch_id', 'paid_at'] } },
+);
+
 export const AppSchema = new Schema({
   organizations,
   branches,
@@ -188,6 +239,8 @@ export const AppSchema = new Schema({
   packages,
   sessions,
   session_segments,
+  bills,
+  payments,
 });
 
 export type Database = (typeof AppSchema)['types'];
@@ -203,3 +256,5 @@ export type RateRuleRow = Row<Database['rate_rules']>;
 export type PackageRow = Row<Database['packages']>;
 export type SessionRow = Row<Database['sessions']>;
 export type SessionSegmentRow = Row<Database['session_segments']>;
+export type BillRow = Row<Database['bills']>;
+export type PaymentRow = Row<Database['payments']>;

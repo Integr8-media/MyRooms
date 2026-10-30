@@ -24,6 +24,13 @@ export const ERROR_KEYS = [
   'session_closed',
   'invalid_package',
   'too_many_players',
+  'session_not_ended',
+  'invalid_bill',
+  'bill_void',
+  'bill_has_payments',
+  'invalid_discount',
+  'invalid_amount',
+  'reason_required',
   // Supabase Auth error codes.
   'invalid_credentials',
   'email_exists',

@@ -8,3 +8,4 @@ supabase/.temp
 package-lock.json
 .env.example
 docs/deploy-guide.html
+supabase/functions/_shared/domain

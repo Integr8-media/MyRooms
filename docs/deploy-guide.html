@@ -146,7 +146,7 @@ html { scroll-behavior: smooth; }
     <h1>Deploying MyRooms</h1>
     <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
     <div class="meta">
-      <span class="chip">Current phase: <strong>Phase 3 · Live floor &amp; walk-ins</strong></span>
+      <span class="chip">Current phase: <strong>Phase 4 · Checkout &amp; payments</strong></span>
       <span class="chip">Updated: <strong>2026-10-30</strong></span>
       <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
       <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
@@ -169,7 +169,7 @@ html { scroll-behavior: smooth; }
       <a href="#s6" data-step="s6"><span class="n">06</span>Install PowerSync</a>
       <div class="label">Apps</div>
       <a href="#s7" data-step="s7"><span class="n">07</span>Point the app at the VPS</a>
-      <a href="#s7b" data-step="s7b"><span class="n">07b</span>Invitation emails</a>
+      <a href="#s7b" data-step="s7b"><span class="n">07b</span>Edge Functions</a>
       <a href="#s8" data-step="s8"><span class="n">08</span>Publish the web app</a>
       <a href="#s9" data-step="s9"><span class="n">09</span>Windows app</a>
       <a href="#s10" data-step="s10"><span class="n">10</span>Android and iOS</a>
@@ -242,7 +242,7 @@ html { scroll-behavior: smooth; }
               <tr><td class="ph">1 Accounts &amp; roles</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. Auth settings in step 3 (anonymous sign-in off, email confirmation on, SMTP required, redirect URLs), new migration (organizations, branches, roles, invitations, access rules), new sync streams, the <code>invite-staff</code> Edge Function (step 7b), and <code>EXPO_PUBLIC_APP_URL</code> for app builds.</td></tr>
               <tr><td class="ph">2 Stations &amp; pricing</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (station types, stations, rate rules, packages, audit log) and new sync streams. No new services or settings: repeat step 5 and restart PowerSync.</td></tr>
               <tr><td class="ph">3 Live floor</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (sessions and session segments) and new sync streams: repeat step 5 and restart PowerSync. Alerts are local notifications only (no push keys needed), but phones need a new development build (step 10) and Windows a new installer (step 9).</td></tr>
-              <tr><td class="ph">4 Checkout</td><td><span class="pill plan">Planned</span></td><td>Server-side bill calculation (database functions or Edge Functions deployed to the Supabase <code>volumes/functions</code> folder).</td></tr>
+              <tr><td class="ph">4 Checkout</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (bills, payments, receipt numbers) and new sync streams: repeat step 5 and restart PowerSync. The new <code>create-bill</code> Edge Function is <strong>required</strong> (step 7b): it calculates every final bill on the server. Phones need a new development build (step 10: <code>expo-print</code>, <code>expo-sharing</code>).</td></tr>
               <tr><td class="ph">5 Income dashboard</td><td><span class="pill plan">Planned</span></td><td>Migrations (report views) only.</td></tr>
               <tr><td class="ph">6 Calendar</td><td><span class="pill plan">Planned</span></td><td>Double-booking constraint migration. First pilot deploy at the client's center.</td></tr>
               <tr><td class="ph">7 Optional modules</td><td><span class="pill plan">Planned</span></td><td>Migrations + sync streams only.</td></tr>
@@ -390,7 +390,7 @@ npx supabase db push --db-url "postgresql://postgres.&lt;POOLER_TENANT_ID&gt;:&l
           <p>Then give the PowerSync database role a password (once per server) and confirm logical replication is on:</p>
           <div class="code"><pre>docker exec -it supabase-db psql -U postgres -c "alter role powersync_role with password '&lt;new-random-password&gt;';"
 docker exec -it supabase-db psql -U postgres -c "show wal_level;"   <span class="c"># must print: logical</span></pre><span class="tag">VPS</span></div>
-          <div class="check"><span>In Studio → Table editor, the <code>organizations</code>, <code>branches</code>, <code>memberships</code>, <code>member_branches</code>, <code>invitations</code>, <code>station_types</code>, <code>stations</code>, <code>rate_rules</code>, <code>packages</code>, <code>audit_log</code>, <code>sessions</code> and <code>session_segments</code> tables exist.</span></div>
+          <div class="check"><span>In Studio → Table editor, the <code>organizations</code>, <code>branches</code>, <code>memberships</code>, <code>member_branches</code>, <code>invitations</code>, <code>station_types</code>, <code>stations</code>, <code>rate_rules</code>, <code>packages</code>, <code>audit_log</code>, <code>sessions</code>, <code>session_segments</code>, <code>bills</code> and <code>payments</code> tables exist.</span></div>
         </div>
       </section>
 
@@ -435,7 +435,15 @@ EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</s
             <li>Alerts: Settings → Account → <strong>Session alerts</strong> → allow notifications. Start a fixed session with a custom duration of 6 minutes: about a minute later "5 minutes left" appears, then "time is up" (web and Windows: the app must be open; phones: also in the background).</li>
             <li>Offline test: switch Wi-Fi off, start and end a session, switch it back on. The session appears in Studio → <code>sessions</code>.</li>
           </ol>
-          <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings, sees the prices read-only, and can't add stations. The owner sees every branch and all staff. The new stations show on the cashier's device. The cashier can start and end sessions but has no <strong>Cancel session</strong> button.</span></div>
+          <div class="note"><span>Checkout needs the <code>create-bill</code> Edge Function: do <a href="#s7b">step 7b</a> before the checks below.</span></div>
+          <ol start="11">
+            <li><strong>End</strong> a session: the app opens <strong>Checkout</strong>. "Number given after sync" changes to "Receipt #1" a few seconds later, and the bill is in Studio → <code>bills</code> with the same total.</li>
+            <li>Take part of the bill by <strong>Cash</strong> (enter what the customer handed over to see the change), then the rest by <strong>Instapay</strong> with a reference. The bill shows <strong>Paid</strong>; Studio → <code>payments</code> has both rows with your user in <code>received_by</code>.</li>
+            <li>As a manager: on a new bill, <strong>Give a discount</strong> (10 %) before any payment; on a paid bill, <strong>Refund</strong> part of it with a reason; <strong>Void</strong> another bill with a reason. Each one is in Studio → <code>audit_log</code>.</li>
+            <li><strong>Print or share receipt</strong>: web and Windows open the print dialog ("Save as PDF" keeps a copy); phones open the share sheet with a PDF. Check it in Arabic too.</li>
+            <li>Offline test: switch Wi-Fi off, end a session and take a cash payment, switch Wi-Fi on. The bill gets its number and the payment is in <code>payments</code>. Ended sessions not fully paid are listed under <strong>Waiting for payment</strong> on the floor.</li>
+          </ol>
+          <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings, sees the prices read-only, and can't add stations. The owner sees every branch and all staff. The new stations show on the cashier's device. The cashier can start and end sessions and take payments, but has no <strong>Cancel session</strong>, discount, refund or void buttons.</span></div>
         </div>
       </section>
 
@@ -443,14 +451,22 @@ EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</s
         <div class="step" data-step="s7b">
           <div class="step-head">
             <span class="step-num">07b</span>
-            <div class="step-title"><h3>Invitation emails (Edge Function)</h3><span class="where">Where: <b>VPS</b> · folder <code>supabase/functions/invite-staff</code></span></div>
+            <div class="step-title"><h3>Edge Functions (required for checkout)</h3><span class="where">Where: <b>VPS</b> · folder <code>supabase/functions</code></span></div>
             <label class="done-toggle"><input type="checkbox" id="done-s7b"> Done</label>
           </div>
-          <p>The app's <strong>Invite</strong> button calls the <code>invite-staff</code> function. It saves the invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).</p>
-          <div class="code"><pre>mkdir -p ~/myrooms/supabase/volumes/functions/invite-staff
-cp ~/myrooms/app/supabase/functions/invite-staff/index.ts ~/myrooms/supabase/volumes/functions/invite-staff/
+          <ul>
+            <li><code>create-bill</code> (<strong>required</strong> from Phase 4): when a bill uploads, it calculates the final bill on the server with the same pricing code as the app (<code>_shared/domain</code>, a copy of <code>src/domain</code> made by <code>npm run domain:sync</code>) and saves it.</li>
+            <li><code>invite-staff</code>: saves an invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).</li>
+          </ul>
+          <div class="code"><pre>cd ~/myrooms/app &amp;&amp; git pull
+for f in _shared create-bill invite-staff; do
+  rm -rf ~/myrooms/supabase/volumes/functions/$f
+  cp -r supabase/functions/$f ~/myrooms/supabase/volumes/functions/
+done
 cd ~/myrooms/supabase &amp;&amp; docker compose restart functions</pre><span class="tag">VPS</span></div>
-          <div class="check"><span>Invite a new email from Settings → Staff: the app says the invitation was <strong>emailed</strong>, and <code>docker compose logs functions</code> shows no errors.</span></div>
+          <div class="note"><span><strong>Deploy <code>create-bill</code> before staff end sessions.</strong> Without it, a device's uploads stop at its first bill: that bill and every change made after it wait ("Waiting to upload" doesn't drop to 0). Nothing is lost; it all uploads once the function is there.</span></div>
+          <p><code>create-bill</code> uses the service role key that Supabase already passes to the functions container. It never leaves the server.</p>
+          <div class="check"><span>End a session: the bill gets a receipt number within seconds. Invite a new email: the app says it was <strong>emailed</strong>. <code>docker compose logs functions</code> shows no errors.</span></div>
         </div>
       </section>
 
@@ -503,7 +519,7 @@ npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_UR
 
 npx eas-cli build --profile development --platform android   <span class="c"># installable APK</span>
 npx eas-cli build --profile development --platform ios       <span class="c"># needs an Apple Developer account</span></pre><span class="tag">PC</span></div>
-          <div class="note"><span>Phase 3 added <code>expo-notifications</code> (native code): make a new development build after updating. Only local notifications are used, so no push keys (FCM / APNs) are needed.</span></div>
+          <div class="note"><span>Phase 3 added <code>expo-notifications</code> and Phase 4 <code>expo-print</code> and <code>expo-sharing</code> (native code): make a new development build after updating. Only local notifications are used, so no push keys (FCM / APNs) are needed.</span></div>
           <div class="check"><span>The build installs on a phone and opens on the sign-in page. After signing in, the Sync card shows <strong>Online</strong> and branches created on the web show up on the phone.</span></div>
         </div>
       </section>
@@ -522,7 +538,7 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
               <tr><td><code>powersync_role</code> password, storage password, admin token <span class="pill wip">Secret</span></td><td><code>~/myrooms/app/deploy/powersync/.env</code> (VPS)</td><td>PowerSync</td></tr>
               <tr><td>What each device downloads</td><td><code>deploy/powersync/sync-config.yaml</code> (git)</td><td>PowerSync</td></tr>
               <tr><td>Database tables and access rules</td><td><code>supabase/migrations/*.sql</code> (git)</td><td>Postgres, via <code>supabase db push</code></td></tr>
-              <tr><td>Edge Functions (invitation emails)</td><td><code>supabase/functions/</code> (git), copied to <code>~/myrooms/supabase/volumes/functions</code></td><td>Supabase functions container</td></tr>
+              <tr><td>Edge Functions (final bills, invitation emails)</td><td><code>supabase/functions/</code> (git), copied to <code>~/myrooms/supabase/volumes/functions</code></td><td>Supabase functions container</td></tr>
               <tr><td>SMTP login <span class="pill wip">Secret</span></td><td><code>~/myrooms/supabase/.env</code> (VPS)</td><td>Supabase Auth emails</td></tr>
             </tbody>
           </table>
@@ -539,7 +555,7 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
             <tbody>
               <tr><td>New SQL migration</td><td>Repeat step 5 (<code>supabase db push</code> through the tunnel)</td></tr>
               <tr><td>Sync rules</td><td>On the VPS: <code>cd ~/myrooms/app &amp;&amp; git pull</code>, then <code>docker compose restart powersync</code> in <code>deploy/powersync</code></td></tr>
-              <tr><td>Edge Function</td><td>Repeat step 7b</td></tr>
+              <tr><td>Edge Function, or anything in <code>src/domain</code></td><td>Repeat step 7b (<code>create-bill</code> uses a copy of <code>src/domain</code>)</td></tr>
               <tr><td>App code (web)</td><td>Repeat step 8</td></tr>
               <tr><td>App code (Windows / mobile)</td><td>Rebuild (steps 9 and 10) and reinstall</td></tr>
               <tr><td>Supabase version</td><td>Follow the official upgrade notes, using <code>sh run.sh</code> / <code>update.sh</code> in <code>~/myrooms/supabase</code></td></tr>
@@ -579,6 +595,7 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
           <p>One entry each time a phase changes how MyRooms is deployed.</p>
         </div>
         <div class="log">
+          <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 4.</strong> New migration: bills (one per completed session, receipt numbers per branch, discount, void) and payments (cash / Visa / Instapay, split payments, refunds), all audited. Only the service role can create a bill. New <strong>required</strong> Edge Function <code>create-bill</code> that prices each bill on the server (step 7b now copies <code>_shared</code>, <code>create-bill</code> and <code>invite-staff</code>). New sync streams: bills and payments per branch. Phones need a new development build (<code>expo-print</code>, <code>expo-sharing</code>). Step 5's check lists the new tables; step 7 now checks checkout, split payments, discounts, refunds, voids, receipts and offline payments.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 3.</strong> New migration: walk-in sessions and session segments (one running session per station, no starting a station in maintenance, only owners and managers cancel, cancellations audited). New sync streams: staff get the sessions of their branches, owners all of them. Session alerts are local notifications: new <code>expo-notifications</code> config plugin (phones need a new development build) and the Tauri notification plugin (rebuild the Windows installer). Step 5's check lists the new tables; step 7 now checks the live floor, fixed sessions, alerts and offline sessions.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 2.</strong> New migration: station types, stations (with maintenance), hourly rate rules (days, times, player counts, priority, date range), hour packages, and an audit log of price changes. New sync streams: every member gets their organizations' prices, and staff get the stations of their branches. Step 5's check lists the new tables; step 7 now checks setting up prices and stations and the price preview. No new services or settings.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 1.</strong> Real accounts: anonymous sign-in off, email confirmation required (SMTP now mandatory), redirect URLs for email links. New migration with organizations, branches, roles, invitations and access rules (replaces the Phase 0 <code>sync_checks</code> demo). New sync streams per role. New step 7b: the <code>invite-staff</code> Edge Function. New app variable <code>EXPO_PUBLIC_APP_URL</code>. Step 7 now checks sign-up, organization setup, offline sync and roles.</div></div>

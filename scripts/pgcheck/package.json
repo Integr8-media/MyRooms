@@ -1,0 +1,14 @@
+{
+  "name": "myrooms-pgcheck",
+  "private": true,
+  "description": "Runs supabase/migrations and the pgTAP tests in PGlite (no Docker), and validates the PowerSync sync streams.",
+  "type": "module",
+  "scripts": {
+    "check": "node run.mjs && node --js-explicit-resource-management validate-sync.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.13",
+    "@powersync/service-sync-rules": "^0.44.0",
+    "yaml": "^2.9.1"
+  }
+}

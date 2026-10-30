@@ -304,9 +304,11 @@ export function SessionScreen() {
                     variant="danger"
                     disabled={busy}
                     onPress={() =>
-                      act(() =>
-                        confirm === 'end' ? endSession(session.id) : cancelSession(session.id),
-                      )
+                      act(async () => {
+                        if (confirm === 'cancel') return cancelSession(session.id);
+                        await endSession(session.id);
+                        router.replace({ pathname: '/checkout/[id]', params: { id: session.id } });
+                      })
                     }
                     testID="confirm-close"
                   />
@@ -340,7 +342,14 @@ export function SessionScreen() {
       ) : null}
 
       {!active && session.status === 'completed' ? (
-        <Notice tone="success" message={t('sessions.endedNotice')} />
+        <>
+          <Notice tone="success" message={t('sessions.endedNotice')} />
+          <Button
+            label={t('checkout.open')}
+            onPress={() => router.push({ pathname: '/checkout/[id]', params: { id: session.id } })}
+            testID="open-checkout"
+          />
+        </>
       ) : null}
       {session.status === 'cancelled' ? (
         <Notice tone="warning" message={t('sessions.cancelledNotice')} />

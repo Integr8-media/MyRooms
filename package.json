@@ -24,7 +24,9 @@
     "expo-linking": "~58.0.15",
     "expo-localization": "~58.0.5",
     "expo-notifications": "~58.1.7",
+    "expo-print": "~58.0.8",
     "expo-router": "~58.0.28",
+    "expo-sharing": "~58.0.21",
     "expo-splash-screen": "~58.0.12",
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
@@ -80,7 +82,9 @@
     "desktop:build": "tauri build",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "db:test": "supabase test db"
+    "db:test": "supabase test db",
+    "db:check": "npm --prefix scripts/pgcheck run check",
+    "domain:sync": "node scripts/sync-domain.mjs"
   },
   "private": true
 }

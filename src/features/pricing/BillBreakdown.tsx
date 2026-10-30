@@ -54,6 +54,13 @@ export function BillBreakdown({
           danger={!line.coveredByPackage && !line.ruleId}
         />
       ))}
+      {bill.discountAmount > 0 ? (
+        <Row
+          label={t('checkout.discount')}
+          detail={t('checkout.beforeDiscount', { amount: money(bill.total + bill.discountAmount) })}
+          amount={`−${money(bill.discountAmount)}`}
+        />
+      ) : null}
       <View className="mt-2 flex-row items-center border-t border-border pt-2">
         <Text variant="heading" className="flex-1">
           {t('pricing.total', { duration: formatDuration(bill.totalMinutes, t) })}

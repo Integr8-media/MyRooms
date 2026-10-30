@@ -115,6 +115,7 @@ const mockSession = {
 let mockRole: 'owner' | 'manager' | 'cashier' = 'cashier';
 const mockPush = jest.fn();
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
 let mockParams: Record<string, string> = {};
 
 jest.mock('@powersync/react', () => ({
@@ -170,11 +171,12 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
   }),
 }));
 jest.mock('@/features/sync/SyncStatusCard', () => ({ SyncStatusCard: () => null }));
+jest.mock('@/features/checkout/UnpaidList', () => ({ UnpaidList: () => null }));
 jest.mock('expo-router', () => ({
   router: {
     push: (...a: unknown[]) => mockPush(...a),
     back: () => mockBack(),
-    replace: jest.fn(),
+    replace: (...a: unknown[]) => mockReplace(...a),
     canGoBack: () => true,
   },
   useLocalSearchParams: () => mockParams,
@@ -289,6 +291,10 @@ describe('SessionScreen', () => {
     expect(mockEnd).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('confirm-close'));
     expect(mockEnd).toHaveBeenCalledWith('s-open');
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: '/checkout/[id]',
+      params: { id: 's-open' },
+    });
   });
 
   it('only owners and managers can cancel', async () => {

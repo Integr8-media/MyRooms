@@ -129,18 +129,34 @@ Restart the app, then check the whole flow:
 9. Alerts: Settings → Account → **Session alerts** → allow notifications. Start a fixed session with a custom duration of 6 minutes: about a minute later you get "5 minutes left", then "time is up" (web/Windows: the app must be open; phones: works in the background).
 10. As the cashier, open a running session: there is no **Cancel session** button (owners and managers only). Offline test: switch Wi-Fi off, start and end a session, switch it back on; the session appears in Studio → `sessions`.
 
-## 7b. Invitation emails (Edge Function)
+Checkout (Phase 4) needs the `create-bill` Edge Function, so do **step 7b first**:
 
-The app's **Invite** button calls the `invite-staff` function, which saves the invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).
+11. **End** a session: the app opens **Checkout** with the bill. "Number given after sync" changes to "Receipt #1" a few seconds later, and the bill appears in Studio → `bills` with the same total.
+12. Take part of the bill by **Cash** (enter what the customer handed over to see the change), then the rest by **Instapay** with a reference. The bill shows **Paid**, and Studio → `payments` has both rows with your name in `received_by`.
+13. As a manager: on a new bill, **Give a discount** (10 %) before taking payment; on a paid bill, **Refund** part of it with a reason; on another bill, **Void** it with a reason. Studio → `audit_log` lists each one. As the cashier, none of these buttons show.
+14. **Print or share receipt**: web/Windows opens the print dialog (choose "Save as PDF" to keep a copy); phones open the share sheet with a PDF. Check it in Arabic too.
+15. Offline test: switch Wi-Fi off, end a session and take a cash payment, switch it back on. The bill gets its number, and `payments` has the row. Ended sessions that aren't fully paid are listed under **Waiting for payment** on the floor.
+
+## 7b. Edge Functions (required for checkout)
+
+Two functions run in Supabase's `functions` container:
+
+- `create-bill` (**required** from Phase 4): when a session's bill uploads, it calculates the final bill on the server with the same pricing code as the app (`supabase/functions/_shared/domain`, a copy of `src/domain` made by `npm run domain:sync`) and saves it. Until it is deployed, a device's uploads stop at its first bill: that bill **and every change made after it** wait in the upload queue ("Waiting to upload" doesn't drop to 0). Nothing is lost: it all uploads once the function is there. Deploy it before staff start ending sessions.
+- `invite-staff`: saves an invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).
 
 ```sh
 # on the VPS
-mkdir -p ~/myrooms/supabase/volumes/functions/invite-staff
-cp ~/myrooms/app/supabase/functions/invite-staff/index.ts ~/myrooms/supabase/volumes/functions/invite-staff/
+cd ~/myrooms/app && git pull
+for f in _shared create-bill invite-staff; do
+  rm -rf ~/myrooms/supabase/volumes/functions/$f
+  cp -r supabase/functions/$f ~/myrooms/supabase/volumes/functions/
+done
 cd ~/myrooms/supabase && docker compose restart functions
 ```
 
-Check: `docker compose logs functions` shows no errors after an invite.
+`create-bill` uses the service role key that Supabase's setup already passes to the functions container (`SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY`). It never leaves the server.
+
+Check: `docker compose logs functions` shows no errors after ending a session or sending an invite.
 
 ## 8. Publish the web app
 
@@ -175,7 +191,7 @@ npx eas-cli build --profile development --platform android   # installable test 
 npx eas-cli build --profile development --platform ios       # needs an Apple Developer account
 ```
 
-Phase 3 added `expo-notifications` (native code), so phones need a **new development build** after updating. Only local notifications are used: no push keys (FCM/APNs) are needed.
+Phase 3 added `expo-notifications` and Phase 4 added `expo-print` and `expo-sharing` (native code), so phones need a **new development build** after updating. Only local notifications are used: no push keys (FCM/APNs) are needed.
 
 Store releases (Google Play, App Store) come in Phase 10.
 
@@ -183,7 +199,7 @@ Store releases (Google Play, App Store) come in Phase 10.
 
 - **Sync rules** (`powersync/sync-config.yaml`): `git pull`, then `docker compose restart powersync`.
 - **New migrations**: repeat step 5 (`supabase db push`). Then restart PowerSync if the sync config changed.
-- **Edge Functions**: repeat step 7b.
+- **Edge Functions**: repeat step 7b (always after pulling a change to `src/domain`, since `create-bill` uses a copy of it).
 - **Web app**: repeat step 8.
 - **Supabase version**: follow the official upgrade notes, using `sh run.sh` and `update.sh` in `~/myrooms/supabase`.
 
