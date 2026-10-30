@@ -24,6 +24,8 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 - Reports export (Phase 8): `src/features/reports/document.ts` builds tables → CSV (UTF-8 BOM) or A4 HTML (`export.ts`). Phones: `expo-file-system` (`File`/`Paths.cache`) + `expo-sharing` for CSV, `expo-print` for PDF; web/Windows: Blob download and the print dialog. Platform split: `share.ts` vs `share.web.ts`.
 - Receipts: HTML from `src/features/checkout/receipt.ts`. Phones: `expo-print` + `expo-sharing` (PDF share sheet). Web/Windows: print from a hidden iframe. Platform split: `shareReceipt.ts` vs `shareReceipt.web.ts`.
 - Calendar: custom timeline (`src/features/calendar/`), no library. Drag/resize with RN `PanResponder`; positions use the logical `start` style so time runs right to left in Arabic.
+- Sync status (Phase 9): `src/lib/powersync/health.ts` (pure) + `useSyncHealth` → `SyncBadge` (floor header), `SyncNotices` (floor) and the `/sync` page; `control.ts` (`connectSync`, `syncNow`, `checkClock` against `public.server_time()`); `persist.web.ts` asks the browser to keep the local database.
+- Error tracking (Phase 9): `@sentry/react-native` via `src/lib/monitoring` (`EXPO_PUBLIC_SENTRY_DSN`, off when empty), sent to a self-hosted GlitchTip (`deploy/glitchtip`). Every event goes through `scrub.ts` (no names, emails, phones, notes). Expo Router `ErrorBoundary` = `src/features/errors/ErrorScreen`.
 - zod for form validation (`src/domain/validation.ts`; messages are i18n keys). Jest (jest-expo) + React Native Testing Library v14 (async `render` and `fireEvent`).
 
 ## Layout
@@ -32,11 +34,11 @@ Gaming center management app (PC desks + PlayStation rooms rented by the hour): 
 src/app/        routes only (Expo Router)
 src/features/   feature UI, one folder per feature
 src/domain/     pure business logic (money, pricing, zoned time, sessions, reservations, billing, income, reports, items, expenses, permissions, validation), no React, heavily unit-tested
-src/lib/        infrastructure: config, i18n, settings, supabase, powersync, notifications
+src/lib/        infrastructure: config, i18n, settings, supabase, powersync (+ sync health), notifications, monitoring
 src/ui/         shared UI kit (Text, Button, Card, Screen, SegmentedControl, Stepper, ...)
 supabase/       migrations/ (SQL, applied with `supabase db push`), tests/ (pgTAP), functions/ (Edge Functions; _shared/domain is a generated copy of src/domain), config.toml (local CLI)
 scripts/        sync-domain.mjs (copies src/domain for Edge Functions), pgcheck/ (migrations + pgTAP in PGlite, sync config check)
-deploy/         VPS: Supabase setup script + port override, PowerSync compose/config/sync streams, Caddyfile
+deploy/         VPS: Supabase setup script + port override, PowerSync compose/config/sync streams, Caddyfile, GlitchTip compose, backup/check/restore scripts
 src-tauri/      Windows shell
 ```
 
@@ -56,7 +58,9 @@ src-tauri/      Windows shell
 - **Reports (Phase 8):** also on the device (`src/domain/reports.ts`, `src/features/reports/`, route `/income`; cashiers get `MyShift`). Net profit = income − expenses (`spent_on`); usage = segment time of active/completed sessions ÷ 24 h per station up to now; snack sales by `session_items.created_at` (cancelled sessions and void bills excluded); top customers by net payments of sessions with a `customer_id`. Each module's section and export part only shows when its toggle is on. Same loose SQL date filter for segments and items. CSV/PDF come from one `ReportDocument`.
 - **Bills and payments:** bill id = session id. Only the `create-bill` Edge Function (service role, `public.create_bill`) creates bills; the connector routes local `bills` inserts there. `create_bill` also adds the session's items and the customer's default discount (`discount_reason = 'customer:<pct>'`). On the device, derive items/total/paid/status from the bill's time and discount amounts plus the local `session_items` and payments (`summarizeBill`), never from `bills.items_amount/total/paid_amount/status`, and only UPDATE the columns clients may write (`discount_amount`, `discount_reason`, `status` = 'void', `void_reason`). Payments are insert-only; corrections are refunds.
 - **Optional modules (customers, snacks, expenses):** check `useWorkspace().features` before showing any module UI (toggles only hide; the server never refuses writes for a module that is off, and existing items still show on bills). Item prices and names are set by the server from the product; `session_items` are insert/delete only. Stock is never stored: it is `sum(stock_movements) - sum(session_items)` per branch (`useProducts`); never write a movement for a sale. Expenses are owners/managers only. Customers are org-wide and their phone is not unique (warn with `samePhone` instead).
-- **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app).
+- **Server-only secrets** never go in `EXPO_PUBLIC_*` (those are bundled into the app). The Sentry/GlitchTip DSN is public by design.
+- **Error reports:** use `reportError`/`reportWarning` from `@/lib/monitoring` with an `area` and ids only; never pass row data, names or phones (scrub.ts is a safety net, not the plan). Don't report plain offline failures.
+- **Time zones:** `toLocal`/`offsetAt` are cached per UTC hour; in loops over many rows use `localDateKey()` instead of `dateKey(toLocal(…))`. Check speed with `npm run perf` after touching reports, pricing or zoned-time.
 - **Git:** never commit, push or open PRs unless the user explicitly asks in that session. Work on a feature branch off `dev`.
 
 ## Commands
@@ -69,6 +73,7 @@ npm run desktop:build                   # Windows installer (see GNU toolchain n
 npm run db:start | db:reset | db:test   # local Supabase (needs Docker; not installed on this PC)
 npm run db:check                        # migrations + pgTAP in PGlite + sync config check (once: npm --prefix scripts/pgcheck install)
 npm run domain:sync                     # copy src/domain to supabase/functions/_shared/domain
+npm run perf                            # performance benchmark on synthetic data (not part of npm test)
 ```
 
 ## At the end of every phase (required)

@@ -7,7 +7,7 @@
  */
 import { PAYMENT_METHODS, isPaymentMethod, type PaymentMethod } from './billing';
 import type { Piasters } from './money';
-import { dateKey, fromLocal, parseDateKey, toLocal } from './zoned-time';
+import { dateKey, fromLocal, localDateKey, parseDateKey, toLocal } from './zoned-time';
 
 export const INCOME_PERIODS = ['today', 'week', 'month', 'custom'] as const;
 export type IncomePeriod = (typeof INCOME_PERIODS)[number];
@@ -211,7 +211,7 @@ export function summarizeIncome(
     s.byMethod[e.method as PaymentMethod] += signed;
     add(s.byBranch, e.branchId ?? '', signed);
     add(s.byStationType, e.stationTypeId ?? '', signed);
-    add(s.byDay, dateKey(toLocal(e.paidAt!, timeZone)), signed);
+    add(s.byDay, localDateKey(e.paidAt!, timeZone), signed);
   }
   return s;
 }

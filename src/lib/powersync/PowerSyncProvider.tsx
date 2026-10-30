@@ -4,8 +4,10 @@ import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { isBackendConfigured } from '@/lib/config';
 
-import { SupabaseConnector } from './connector';
+import { connectSync } from './control';
 import { powersync } from './database';
+import { requestPersistentStorage } from './persist';
+import { useSyncStore } from './sync-store';
 
 /**
  * Opens the local database and syncs it while someone is signed in.
@@ -26,9 +28,11 @@ export function PowerSyncProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (status !== 'signedIn' || !userId) return;
-    void powersync.connect(new SupabaseConnector()).catch((error: unknown) => {
-      console.error('PowerSync: failed to connect', error);
-    });
+    void connectSync();
+    // Ask the browser not to clear the local database (changes may still be waiting there).
+    void requestPersistentStorage().then((persistentStorage) =>
+      useSyncStore.getState().set({ persistentStorage }),
+    );
   }, [status, userId]);
 
   return <PowerSyncContext.Provider value={powersync}>{children}</PowerSyncContext.Provider>;

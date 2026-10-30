@@ -199,7 +199,8 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
     can: (p: string) => p !== 'sessions.cancel' || mockRole !== 'cashier',
   }),
 }));
-jest.mock('@/features/sync/SyncStatusCard', () => ({ SyncStatusCard: () => null }));
+jest.mock('@/features/sync/SyncBadge', () => ({ SyncBadge: () => null }));
+jest.mock('@/features/sync/SyncNotices', () => ({ SyncNotices: () => null }));
 jest.mock('@/features/checkout/UnpaidList', () => ({ UnpaidList: () => null }));
 jest.mock('@/features/sync/RejectedChanges', () => ({ RejectedChanges: () => null }));
 jest.mock('@/lib/powersync/database', () => ({ powersync: {} }));

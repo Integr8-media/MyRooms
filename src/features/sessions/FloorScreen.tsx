@@ -8,7 +8,8 @@ import { UnpaidList } from '@/features/checkout/UnpaidList';
 import { ArrivalsList } from '@/features/reservations/ArrivalsList';
 import { clockAt, useReserved } from '@/features/reservations/data';
 import { RejectedChanges } from '@/features/sync/RejectedChanges';
-import { SyncStatusCard } from '@/features/sync/SyncStatusCard';
+import { SyncBadge } from '@/features/sync/SyncBadge';
+import { SyncNotices } from '@/features/sync/SyncNotices';
 import { BranchSwitcher } from '@/features/workspace/BranchSwitcher';
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
 import type { SessionSegmentRow } from '@/lib/powersync/schema';
@@ -129,6 +130,7 @@ export function FloorScreen() {
             {branch ? branch.name : t('floor.title')}
           </Text>
         </View>
+        <SyncBadge />
         <Button
           label={t('calendar.title')}
           variant="secondary"
@@ -151,6 +153,7 @@ export function FloorScreen() {
 
       <ModuleLinks />
       <BranchSwitcher />
+      <SyncNotices />
       <RejectedChanges />
 
       {!branch ? <Notice tone="warning" message={t('home.noBranch')} /> : null}
@@ -198,7 +201,8 @@ export function FloorScreen() {
                 timing={card.timing}
                 players={card.players}
                 estimate={card.estimate}
-                now={now}
+                // Only running sessions tick; free cards then skip the per-second re-render.
+                now={card.timing ? now : 0}
                 onPress={open(card)}
                 testID={`station-card-${card.row.id}`}
               />
@@ -213,8 +217,6 @@ export function FloorScreen() {
       <ArrivalsList reserved={reserved} now={now} />
 
       <UnpaidList branchId={branch?.id} />
-
-      <SyncStatusCard />
     </Screen>
   );
 }

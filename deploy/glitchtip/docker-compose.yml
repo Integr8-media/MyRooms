@@ -1,0 +1,60 @@
+# Optional: GlitchTip, a self-hosted error tracker that speaks the Sentry protocol, so the
+# app's Sentry SDK reports crashes here instead of to sentry.io. Low-RAM setup: one
+# all-in-one container (web + worker) and its own Postgres, no Valkey (~300-500 MB).
+# Start with: docker compose --env-file .env up -d     (see deploy/README.md, step 11)
+name: myrooms-glitchtip
+
+x-environment: &environment
+  DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
+  # Empty = no Valkey: Postgres also holds the task queue and cache.
+  VALKEY_URL: ''
+  SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
+  GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN}
+  DEFAULT_FROM_EMAIL: ${GLITCHTIP_FROM_EMAIL}
+  # SMTP for alert emails, e.g. smtp://user:password@smtp.example.com:587 (or consolemail://).
+  EMAIL_URL: ${GLITCHTIP_EMAIL_URL}
+  # Only the first account signs up; invite the rest from GlitchTip itself.
+  ENABLE_USER_REGISTRATION: 'false'
+  # Errors only: no uptime checks or log ingestion.
+  GLITCHTIP_ENABLE_UPTIME: 'false'
+  GLITCHTIP_ENABLE_LOGS: 'false'
+  # Delete events after 30 days (they never hold names or phones; see src/lib/monitoring).
+  GLITCHTIP_MAX_EVENT_LIFE_DAYS: '30'
+
+services:
+  glitchtip-db:
+    image: postgres:18
+    restart: unless-stopped
+    # GlitchTip's partitioned tables need more locks than the default.
+    command: ['postgres', '-c', 'max_locks_per_transaction=512']
+    environment:
+      POSTGRES_DB: glitchtip
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD}
+    volumes:
+      - glitchtip-db:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U glitchtip -d glitchtip']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  glitchtip:
+    # Major version tag, as GlitchTip recommends; `docker compose pull` gets fixes.
+    image: glitchtip/glitchtip:6
+    restart: unless-stopped
+    environment:
+      <<: *environment
+      SERVER_ROLE: all_in_one
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    # Only reachable from the VPS itself; Caddy publishes it over HTTPS.
+    ports:
+      - '127.0.0.1:8090:8000'
+
+volumes:
+  glitchtip-db:
+  glitchtip-uploads:

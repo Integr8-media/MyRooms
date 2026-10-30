@@ -146,7 +146,7 @@ html { scroll-behavior: smooth; }
     <h1>Deploying MyRooms</h1>
     <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
     <div class="meta">
-      <span class="chip">Current phase: <strong>Phase 8 · Advanced reports</strong></span>
+      <span class="chip">Current phase: <strong>Phase 9 · Offline hardening</strong></span>
       <span class="chip">Updated: <strong>2026-10-30</strong></span>
       <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
       <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
@@ -173,13 +173,16 @@ html { scroll-behavior: smooth; }
       <a href="#s8" data-step="s8"><span class="n">08</span>Publish the web app</a>
       <a href="#s9" data-step="s9"><span class="n">09</span>Windows app</a>
       <a href="#s10" data-step="s10"><span class="n">10</span>Android and iOS</a>
+      <div class="label">Operations</div>
+      <a href="#s11" data-step="s11"><span class="n">11</span>Error tracking</a>
+      <a href="#s12" data-step="s12"><span class="n">12</span>Backups</a>
       <div class="label">Reference</div>
       <a href="#config"><span class="n">·</span>Where each value goes</a>
       <a href="#ops"><span class="n">·</span>Updating and backups</a>
       <a href="#trouble"><span class="n">·</span>Troubleshooting</a>
       <a href="#changelog"><span class="n">·</span>Changelog</a>
       <div class="progress" aria-live="polite">
-        <span id="progress-text">0 of 11 steps done</span>
+        <span id="progress-text">0 of 13 steps done</span>
         <div class="bar"><span id="progress-bar"></span></div>
         <button class="reset" id="reset" type="button">Clear my checkmarks</button>
       </div>
@@ -247,7 +250,7 @@ html { scroll-behavior: smooth; }
               <tr><td class="ph">6 Calendar</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (reservation columns on <code>sessions</code>, the <code>btree_gist</code> extension and the no-double-booking constraint): repeat step 5. No new sync stream, setting or Edge Function. Publish the web build (step 8), Windows installer (step 9) and app builds as usual. This is the MVP: first pilot at the client's center once steps 1–10 and the step 7 checks pass.</td></tr>
               <tr><td class="ph">7 Optional modules</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (customers, products, session items, stock movements, expenses; bills now include items and the customer's default discount) and new sync streams: repeat step 5 and <strong>restart PowerSync</strong>. No new setting or Edge Function (<code>create-bill</code> is unchanged). Publish the web build (step 8), Windows installer (step 9) and app builds as usual.</td></tr>
               <tr><td class="ph">8 Advanced reports</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. <strong>Nothing to deploy on the server</strong>: no migration, sync stream, setting or Edge Function. Reports (net profit, usage, busiest hours, top customers, snack sales, branch and period comparison, CSV/PDF export) are worked out on each device from what it already syncs. Publish the web build (step 8) and Windows installer (step 9); phones need a new development build (step 10: <code>expo-file-system</code>).</td></tr>
-              <tr><td class="ph">9 Reliability</td><td><span class="pill plan">Planned</span></td><td>Automated backups and a restore drill, Sentry error tracking, monitoring.</td></tr>
+              <tr><td class="ph">9 Offline hardening</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One small migration (<code>server_time()</code> for the device clock check): repeat step 5. No sync stream or Edge Function change. Phones need a new development build (step 10: the error-tracking SDK). New optional step 11 (GlitchTip error tracking, self-hosted) and new step 12 (nightly backups and a weekly restore check). Step 7 gains checks 30–36, including a full offline day and two-device conflicts.</td></tr>
               <tr><td class="ph">10 Release</td><td><span class="pill plan">Planned</span></td><td>Windows code signing + auto-update, Google Play and App Store releases, production domain.</td></tr>
             </tbody>
           </table>
@@ -420,13 +423,16 @@ docker compose logs -f powersync   <span class="c"># replication starts, no erro
           <div class="code"><pre>EXPO_PUBLIC_SUPABASE_URL=https://api.example.com
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=&lt;from "sh run.sh secrets"&gt;
 EXPO_PUBLIC_POWERSYNC_URL=https://sync.example.com
-EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</span></div>
+EXPO_PUBLIC_APP_URL=https://app.example.com
+<span class="c"># Optional (step 11): error reports to GlitchTip. Empty = off.</span>
+EXPO_PUBLIC_SENTRY_DSN=
+EXPO_PUBLIC_APP_ENV=pilot</pre><span class="tag">.env.local</span></div>
           <p>Run <code>npm run web</code>. These values are built into the app, so any change needs a rebuild.</p>
           <p>Then check the whole flow:</p>
           <ol>
             <li><strong>Create account</strong>, open the confirmation email, then <strong>Sign in</strong>.</li>
-            <li><strong>Create organization</strong> (name + first branch). The home screen shows the branch and the <strong>Sync</strong> card shows <strong>Online</strong>.</li>
-            <li>Offline test: switch Wi-Fi off, go to Settings → Branches → <strong>Add branch</strong>. "Waiting to upload" becomes 1. Switch Wi-Fi on: it drops to 0 and the branch appears in Studio → <code>branches</code>.</li>
+            <li><strong>Create organization</strong> (name + first branch). The home screen shows the branch and the sync badge at the top shows <strong>Up to date</strong>.</li>
+            <li>Offline test: switch Wi-Fi off, go to Settings → Branches → <strong>Add branch</strong>. The sync badge shows <strong>Offline · 1 waiting</strong>. Switch Wi-Fi on: it goes back to <strong>Up to date</strong> and the branch appears in Studio → <code>branches</code>.</li>
             <li>Settings → Staff → <strong>Invite</strong> a second email as Cashier for one branch. Sign in with that email in another browser: the invitation is on the welcome screen. <strong>Join</strong> it.</li>
             <li>As the owner: Settings → <strong>Station types &amp; prices</strong> → add a type (e.g. PS5 Room, 4 players), a base price, a peak price (18:00–24:00, priority 10) and a 3-hour package. Then Settings → <strong>Stations</strong> → add 3 stations at once and put one in maintenance.</li>
             <li>Settings → <strong>Price preview</strong>: 17:00 to 19:30 should cost 1 hour at the base price plus 1.5 hours at the peak price.</li>
@@ -469,6 +475,16 @@ EXPO_PUBLIC_APP_URL=https://app.example.com</pre><span class="tag">.env.local</s
             <li><strong>Usage</strong> shows the share of station time in use (whole day, up to now) per type and per station, and <strong>Busiest hours</strong> (days × hours, darker = busier). Start a session and reopen: usage goes up. <strong>Customers</strong> lists who paid the most; <strong>Snacks &amp; drinks</strong> lists items sold per product. Switch a module off: its tab and its part of the export disappear.</li>
             <li><strong>Export CSV</strong> / <strong>Export PDF</strong>: web and Windows download the CSV and open the print dialog for the PDF ("Save as PDF"); phones open the share sheet. In Excel or Google Sheets, Arabic reads correctly and amounts are plain EGP numbers. A manager only sees their branches.</li>
           </ol>
+          <div class="note"><span>Offline hardening (Phase 9) needs the new migration (step 5: <code>server_time()</code>, for the clock check) and new phone builds (step 10). Steps 11 and 12 add error tracking and backups. Then:</span></div>
+          <ol start="30">
+            <li><strong>Sync badge:</strong> the top of the floor shows <strong>Up to date</strong>, <strong>Syncing…</strong>, <strong>Offline</strong> (with how many changes wait) or <strong>Not uploading</strong>. Tap it: the <strong>Sync</strong> page shows the last sync, what is waiting by kind, <strong>Sync now</strong>, the clock check, whether the browser keeps the local data, and how many rows the device holds.</li>
+            <li><strong>A full offline day</strong> at the center, on every kind of device used there: sync everything in the morning, unplug the internet router, and run the day as usual (walk-ins, a reservation check-in, moves, player changes, snacks, cash checkouts, a manager discount, an expense). After an hour the floor says "offline since …". In the evening plug the router back in: within a minute every badge is <strong>Up to date</strong>, <strong>Not saved</strong> only lists real conflicts (item 32), the owner's income for the day matches the cash counted, and every session in Studio → <code>bills</code> has a numbered bill.</li>
+            <li><strong>Two devices offline</strong> on the same branch: (a) start a walk-in on the same station on both, (b) book the same slot on both, (c) take a payment for the same bill on both, (d) sell the last can of a drink on both. Back online: (a) one session stays, the other device lists <strong>Walk-in session not saved</strong> ("station busy"); (b) one booking stays, the other gets <strong>Book again</strong>; (c) both payments are kept and the bill shows paid too much (refund one); (d) both sales are kept and stock shows −1 (count it later).</li>
+            <li><strong>Wrong clock:</strong> set a device 10 minutes off (automatic time off) and sign in online: the floor warns that its clock is 10 min behind/ahead. Turn automatic time back on: the warning goes after <strong>Sync now</strong>.</li>
+            <li><strong>Stuck uploads:</strong> <code>docker compose stop functions</code> in <code>~/myrooms/supabase</code>, then end a session: the badge turns <strong>Not uploading</strong> and the floor explains the bill service is down. Start it again: the bill uploads.</li>
+            <li><strong>Error reports</strong> (after step 11): GlitchTip shows events from each platform with ids and roles only (no names, emails or phone numbers); a refused change from item 32 appears as a warning "Upload refused by the server".</li>
+            <li><strong>Backups</strong> (after step 12): <code>ls ~/backups</code> shows last night's dump, and <code>check.sh</code> ends with <strong>restore check PASSED</strong>.</li>
+          </ol>
           <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings, sees the prices read-only, and can't add stations. The owner sees every branch and all staff. The new stations show on the cashier's device. The cashier can start and end sessions and take payments, but has no <strong>Cancel session</strong>, discount, refund or void buttons, can't restock or change product prices or customer discounts, and sees no expenses.</span></div>
         </div>
       </section>
@@ -490,7 +506,7 @@ for f in _shared create-bill invite-staff; do
   cp -r supabase/functions/$f ~/myrooms/supabase/volumes/functions/
 done
 cd ~/myrooms/supabase &amp;&amp; docker compose restart functions</pre><span class="tag">VPS</span></div>
-          <div class="note"><span><strong>Deploy <code>create-bill</code> before staff end sessions.</strong> Without it, a device's uploads stop at its first bill: that bill and every change made after it wait ("Waiting to upload" doesn't drop to 0). Nothing is lost; it all uploads once the function is there.</span></div>
+          <div class="note"><span><strong>Deploy <code>create-bill</code> before staff end sessions.</strong> Without it, a device's uploads stop at its first bill: that bill and every change made after it wait (the sync badge shows <strong>Not uploading</strong> and the floor names the bill service). Nothing is lost; it all uploads once the function is there.</span></div>
           <p><code>create-bill</code> uses the service role key that Supabase already passes to the functions container. It never leaves the server.</p>
           <div class="check"><span>End a session: the bill gets a receipt number within seconds. Invite a new email: the app says it was <strong>emailed</strong>. <code>docker compose logs functions</code> shows no errors.</span></div>
         </div>
@@ -506,7 +522,7 @@ cd ~/myrooms/supabase &amp;&amp; docker compose restart functions</pre><span cla
           <div class="code"><pre>npm run build:web                                         <span class="c"># → dist/</span>
 rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><span class="tag">PC</span></div>
           <div class="note"><span>No rsync on Windows? Use <code>scp -r dist/* &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</code>, or run the rsync from WSL.</span></div>
-          <div class="check"><span><code>https://app.example.com</code> shows the sign-in page; after signing in, the Sync card shows <strong>Online</strong>.</span></div>
+          <div class="check"><span><code>https://app.example.com</code> shows the sign-in page; after signing in, the sync badge shows <strong>Up to date</strong>.</span></div>
         </div>
       </section>
 
@@ -523,7 +539,7 @@ rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><spa
           <p><strong>From GitHub:</strong> add the four <code>EXPO_PUBLIC_*</code> values (including <code>EXPO_PUBLIC_APP_URL</code>) as repository <strong>Variables</strong> (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to <code>dev</code> and <code>main</code>, or by hand, and uploads the installer as a build artifact.</p>
           <div class="note"><span>The installer isn't code-signed until Phase 10, so Windows SmartScreen shows a warning ("More info" → "Run anyway").</span></div>
           <div class="note"><span>Since Phase 3 the Windows app shows session alerts through the Tauri notification plugin. Rebuild and reinstall after updating.</span></div>
-          <div class="check"><span>The installed app opens on the sign-in page; after signing in, its Sync card shows <strong>Online</strong>.</span></div>
+          <div class="check"><span>The installed app opens on the sign-in page; after signing in, its sync badge shows <strong>Up to date</strong>.</span></div>
         </div>
       </section>
 
@@ -545,8 +561,48 @@ npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_UR
 
 npx eas-cli build --profile development --platform android   <span class="c"># installable APK</span>
 npx eas-cli build --profile development --platform ios       <span class="c"># needs an Apple Developer account</span></pre><span class="tag">PC</span></div>
-          <div class="note"><span>Phase 3 added <code>expo-notifications</code>, Phase 4 <code>expo-print</code> and <code>expo-sharing</code>, and Phase 8 <code>expo-file-system</code> (native code): make a new development build after updating. Only local notifications are used, so no push keys (FCM / APNs) are needed.</span></div>
-          <div class="check"><span>The build installs on a phone and opens on the sign-in page. After signing in, the Sync card shows <strong>Online</strong> and branches created on the web show up on the phone.</span></div>
+          <div class="note"><span>Phase 3 added <code>expo-notifications</code>, Phase 4 <code>expo-print</code> and <code>expo-sharing</code>, Phase 8 <code>expo-file-system</code> and Phase 9 <code>@sentry/react-native</code> (native code): make a new development build after updating. For error reports also add <code>EXPO_PUBLIC_SENTRY_DSN</code> and <code>EXPO_PUBLIC_APP_ENV</code> with <code>env:create</code>. <code>eas.json</code> sets <code>SENTRY_DISABLE_AUTO_UPLOAD=true</code>, so builds don't try to upload source maps. Only local notifications are used, so no push keys (FCM / APNs) are needed.</span></div>
+          <div class="check"><span>The build installs on a phone and opens on the sign-in page. After signing in, the sync badge shows <strong>Up to date</strong> and branches created on the web show up on the phone.</span></div>
+        </div>
+      </section>
+
+      <section id="s11">
+        <div class="step" data-step="s11">
+          <div class="step-head">
+            <span class="step-num">11</span>
+            <div class="step-title"><h3>Error tracking (optional, GlitchTip)</h3><span class="where">Where: <b>VPS</b> · folder <code>deploy/glitchtip</code></span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s11"> Done</label>
+          </div>
+          <p>The app reports crashes and refused uploads with the Sentry SDK. They go to <strong>GlitchTip</strong>, a small self-hosted tracker that speaks the same protocol (one container plus its own Postgres, about 300–500 MB RAM), not to sentry.io. Reports never contain names, emails, phone numbers or notes: only ids, the role, the platform and the technical error. Without a DSN the app sends nothing.</p>
+          <div class="code"><pre><span class="c"># DNS: errors.example.com → the VPS</span>
+cd ~/myrooms/app/deploy/glitchtip
+cp .env.example .env              <span class="c"># domain, two secrets (openssl rand -hex 32), SMTP or consolemail://</span>
+docker compose --env-file .env up -d</pre><span class="tag">VPS</span></div>
+          <p>Add the <code>errors.example.com</code> block from <code>caddy/Caddyfile.example</code> and reload Caddy. Open <code>https://errors.example.com</code>, create the first account (sign-up then closes), an organization and a <strong>React Native</strong> project. Put its <strong>DSN</strong> in <code>EXPO_PUBLIC_SENTRY_DSN</code> (<code>.env.local</code>, GitHub Variables for the Windows build, EAS env for phones) and rebuild the web, Windows and phone apps (steps 8–10).</p>
+          <div class="check"><span>Tap the sync badge: the Sync page says <strong>Error reports: On</strong>. Item 35 of step 7 passes.</span></div>
+        </div>
+      </section>
+
+      <section id="s12">
+        <div class="step" data-step="s12">
+          <div class="step-head">
+            <span class="step-num">12</span>
+            <div class="step-title"><h3>Backups</h3><span class="where">Where: <b>VPS</b> · folder <code>deploy/backup</code> · cron</span></div>
+            <label class="done-toggle"><input type="checkbox" id="done-s12"> Done</label>
+          </div>
+          <p><code>backup.sh</code> dumps the whole Supabase database (accounts included) every night and keeps 14 days on the VPS. <code>check.sh</code> proves the newest dump restores, into a scratch database with row counts compared, without touching live data. PowerSync's own database isn't backed up: it is rebuilt from Supabase.</p>
+          <div class="code"><pre>mkdir -p ~/backups
+sh ~/myrooms/app/deploy/backup/backup.sh       <span class="c"># first dump now</span>
+sh ~/myrooms/app/deploy/backup/check.sh        <span class="c"># must end with "restore check PASSED"</span>
+crontab -e                                     <span class="c"># add these two lines:</span>
+15 3 * * * sh $HOME/myrooms/app/deploy/backup/backup.sh &gt;&gt; $HOME/backups/backup.log 2&gt;&amp;1
+45 3 * * 0 sh $HOME/myrooms/app/deploy/backup/check.sh &gt;&gt; $HOME/backups/backup.log 2&gt;&amp;1</pre><span class="tag">VPS</span></div>
+          <ul>
+            <li><strong>Off the VPS (recommended):</strong> install rclone and create an <strong>encrypted</strong> remote (for example Oracle Object Storage through its S3 API, wrapped in a <code>crypt</code> remote: the dumps hold customer names and phones). Put <code>BACKUP_REMOTE=&lt;remote&gt;:myrooms-backups</code> in front of the backup command in cron.</li>
+            <li><strong>Also keep</strong> <code>~/myrooms/supabase/.env</code> and <code>deploy/powersync/.env</code> in a password manager: the dumps don't include them.</li>
+            <li><strong>Restoring</strong> (only after losing data): <code>sh ~/myrooms/app/deploy/backup/restore.sh ~/backups/myrooms-&lt;date&gt;.dump --yes</code>. It saves the current database first, stops PowerSync, restores, restarts Supabase and rebuilds PowerSync's copy. Anything written to the server after that backup is lost there; devices still offline upload their waiting changes when they reconnect. On a new server, do steps 1–6 first (the <code>powersync_role</code> password isn't in the dump).</li>
+          </ul>
+          <div class="check"><span><code>~/backups/backup.log</code> has a "backup done" line every night and "restore check PASSED" every Sunday.</span></div>
         </div>
       </section>
 
@@ -565,6 +621,8 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
               <tr><td>What each device downloads</td><td><code>deploy/powersync/sync-config.yaml</code> (git)</td><td>PowerSync</td></tr>
               <tr><td>Database tables and access rules</td><td><code>supabase/migrations/*.sql</code> (git)</td><td>Postgres, via <code>supabase db push</code></td></tr>
               <tr><td>Edge Functions (final bills, invitation emails)</td><td><code>supabase/functions/</code> (git), copied to <code>~/myrooms/supabase/volumes/functions</code></td><td>Supabase functions container</td></tr>
+              <tr><td>Error tracking DSN (public by design), environment name</td><td><code>EXPO_PUBLIC_SENTRY_DSN</code>, <code>EXPO_PUBLIC_APP_ENV</code> in <code>.env.local</code> · GitHub Variables · EAS env</td><td>App builds → GlitchTip</td></tr>
+              <tr><td>GlitchTip secret key, database password <span class="pill wip">Secret</span></td><td><code>~/myrooms/app/deploy/glitchtip/.env</code> (VPS)</td><td>GlitchTip</td></tr>
               <tr><td>SMTP login <span class="pill wip">Secret</span></td><td><code>~/myrooms/supabase/.env</code> (VPS)</td><td>Supabase Auth emails</td></tr>
             </tbody>
           </table>
@@ -584,13 +642,12 @@ npx eas-cli build --profile development --platform ios       <span class="c"># n
               <tr><td>Edge Function, or anything in <code>src/domain</code></td><td>Repeat step 7b (<code>create-bill</code> uses a copy of <code>src/domain</code>)</td></tr>
               <tr><td>App code (web)</td><td>Repeat step 8</td></tr>
               <tr><td>App code (Windows / mobile)</td><td>Rebuild (steps 9 and 10) and reinstall</td></tr>
+              <tr><td>GlitchTip</td><td><code>docker compose pull &amp;&amp; docker compose --env-file .env up -d</code> in <code>deploy/glitchtip</code></td></tr>
               <tr><td>Supabase version</td><td>Follow the official upgrade notes, using <code>sh run.sh</code> / <code>update.sh</code> in <code>~/myrooms/supabase</code></td></tr>
             </tbody>
           </table>
         </div>
-        <p>Database files live in <code>~/myrooms/supabase/volumes/db/data</code>. Until automated backups arrive in Phase 9, run a nightly dump (for example from cron):</p>
-        <div class="code"><pre>mkdir -p ~/backups
-docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-$(date +%F).dump</pre><span class="tag">VPS</span></div>
+        <p>Backups: see step 12 (nightly dump, weekly restore check, restore script).</p>
       </section>
 
       <section id="trouble">
@@ -609,6 +666,9 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
               <tr><td>No confirmation or reset emails arrive</td><td>Check the <code>SMTP_*</code> values and <code>docker compose logs auth</code>. Local development: emails appear in Inbucket at <code>http://localhost:54324</code>.</td></tr>
               <tr><td>Email link opens "link is invalid or has expired"</td><td>Links work once and expire. Also check the app URL is in <code>ADDITIONAL_REDIRECT_URLS</code> (otherwise Supabase sends people to <code>SITE_URL</code>).</td></tr>
               <tr><td>Signed in, but stuck on "Loading your data…"</td><td>PowerSync isn't reachable or rejects the token: see the <code>PSYNC_*</code> rows above and <code>docker compose logs powersync</code>.</td></tr>
+              <tr><td>Sync badge says <strong>Not uploading</strong></td><td>Tap it: the Sync page names what is waiting. A bill at the head of the queue means <code>create-bill</code> isn't running (step 7b, <code>docker compose logs functions</code>). Otherwise check <code>docker compose logs rest</code>. Nothing is lost while it waits.</td></tr>
+              <tr><td>Floor warns the device clock is wrong</td><td>Turn on automatic date and time in the device (Windows: Settings → Time &amp; language). Sessions and bills use the device clock.</td></tr>
+              <tr><td>Sync page: local data "may be cleared by the browser"</td><td>Use the Windows app, or install the web app (browser menu → Install) so the browser keeps its data.</td></tr>
               <tr><td>Caddy has no certificate</td><td>DNS isn't pointing at the VPS yet, or ports 80/443 are closed in the Oracle security list.</td></tr>
             </tbody>
           </table>
@@ -621,6 +681,7 @@ docker exec supabase-db pg_dump -U postgres -Fc postgres &gt; ~/backups/myrooms-
           <p>One entry each time a phase changes how MyRooms is deployed.</p>
         </div>
         <div class="log">
+          <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 9.</strong> Offline hardening. New migration: <code>server_time()</code>, used by each device to warn when its clock is wrong. No sync stream or Edge Function change. The floor's sync card became a <strong>sync badge</strong> with a <strong>Sync</strong> page (state, last sync, what is waiting, <strong>Sync now</strong>, clock and storage checks), plus floor warnings after an hour offline or when uploads are stuck (e.g. on <code>create-bill</code>). Refused payments and bills now show in <strong>Not saved</strong> with their amount. Error tracking with the Sentry SDK and a self-hosted <strong>GlitchTip</strong> (new optional step 11, new variables <code>EXPO_PUBLIC_SENTRY_DSN</code>, <code>EXPO_PUBLIC_APP_ENV</code>); phones need a new development build. New step 12: nightly backups, a weekly restore check and a restore script (<code>deploy/backup</code>). Reports and the live floor are faster on big centers. Step 7 gains checks 30–36 (full offline day, two-device conflicts).</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 8.</strong> Advanced reports, worked out on each device: no migration, sync stream or Edge Function. The floor's <strong>Income</strong> button is now <strong>Reports</strong> (Overview with net profit and the change against the previous period, branch comparison, Usage with busiest hours, top Customers, Snacks &amp; drinks sales) with CSV and PDF export. Phones need a new development build (<code>expo-file-system</code>). Step 7 gains checks 27–29.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 7.</strong> Optional modules. New migration: <code>customers</code> (org-wide, default discount set by owners and managers), <code>products</code> (owners set prices), <code>session_items</code> (snacks and drinks on a session; the server sets the price and keeps the bill's items total), <code>stock_movements</code> (restocks and count corrections per branch; stock = movements − items sold) and <code>expenses</code> (owners and branch managers only), all audited. <code>create_bill()</code> now adds the items and the customer's default discount, so the <code>create-bill</code> Edge Function is unchanged. New sync streams (<code>org_catalog</code>, plus items, stock and expenses in the branch streams): <strong>restart PowerSync</strong>. Step 5's check lists the new tables; step 7 gains checks 22–26.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 6.</strong> Calendar and reservations. New migration: reservation columns on <code>sessions</code> (planned players, customer name and phone), the <code>btree_gist</code> extension and an exclusion constraint so a station can't be booked twice for the same time, even by two offline devices; check-in, no-show (15 minutes after the start) and cancel rules. No new sync stream, setting or Edge Function. Changes the server refuses are now listed on the device under <strong>Not saved</strong>. Step 7 gains checks 18–21.</div></div>
