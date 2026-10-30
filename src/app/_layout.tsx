@@ -4,13 +4,22 @@ import '@/lib/i18n';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ErrorScreen } from '@/features/errors/ErrorScreen';
 import { BootScreen } from '@/features/workspace/BootScreen';
 import { useWorkspace, WorkspaceProvider } from '@/features/workspace/WorkspaceProvider';
 import { AuthProvider, useAuth } from '@/lib/auth/AuthProvider';
+import { initMonitoring, wrapRoot } from '@/lib/monitoring';
 import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider';
 import { AppearanceProvider } from '@/lib/settings/AppearanceProvider';
 
-export default function RootLayout() {
+// Before anything renders, so start-up errors are caught too.
+initMonitoring();
+
+export { ErrorScreen as ErrorBoundary };
+
+export default wrapRoot(RootLayout);
+
+function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppearanceProvider>

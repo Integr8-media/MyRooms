@@ -71,3 +71,42 @@ describe('zoned time', () => {
     expect(previousDateKey('2024-03-01')).toBe('2024-02-29');
   });
 });
+
+describe('cached offsets (Phase 9 speed-up)', () => {
+  // The exact answer, straight from Intl, to compare the cache with.
+  const exact = (instant: number, timeZone: string) => {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+      })
+        .formatToParts(new Date(instant))
+        .filter((p) => p.type !== 'literal')
+        .map((p) => [p.type, Number(p.value)]),
+    );
+    return [parts.year, parts.month, parts.day, (parts.hour ?? 0) % 24, parts.minute, parts.second];
+  };
+
+  it.each([
+    // Cairo: spring forward at local midnight (last Friday of April), back at midnight in October.
+    ['Africa/Cairo', Date.UTC(2026, 3, 23, 12), Date.UTC(2026, 3, 25, 0)],
+    ['Africa/Cairo', Date.UTC(2026, 9, 29, 12), Date.UTC(2026, 9, 31, 0)],
+    // A half-hour DST change and a half-hour offset.
+    ['Australia/Lord_Howe', Date.UTC(2026, 3, 4, 0), Date.UTC(2026, 3, 5, 12)],
+    ['America/St_Johns', Date.UTC(2026, 2, 7, 12), Date.UTC(2026, 2, 9, 0)],
+    ['Asia/Kolkata', Date.UTC(2026, 0, 1), Date.UTC(2026, 0, 2)],
+  ])('matches Intl every 7 minutes around changes in %s', (timeZone, from, to) => {
+    for (let t = from; t < to; t += 7 * 60_000 + 1234) {
+      const l = toLocal(t, timeZone);
+      expect([l.year, l.month, l.day, l.hour, l.minute, l.second]).toEqual(exact(t, timeZone));
+      expect(l.millisecond).toBe(((t % 1000) + 1000) % 1000);
+      expect(l.weekday).toBe(new Date(Date.UTC(l.year, l.month - 1, l.day)).getUTCDay());
+    }
+  });
+});

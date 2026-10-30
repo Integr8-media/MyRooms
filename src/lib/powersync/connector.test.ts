@@ -8,6 +8,12 @@ jest.mock('@powersync/common', () => ({
   UpdateType: { PUT: 'PUT', PATCH: 'PATCH', DELETE: 'DELETE' },
 }));
 jest.mock('@/lib/config', () => ({ config: { powersyncUrl: 'https://sync.test' } }));
+const mockReportError = jest.fn();
+const mockReportWarning = jest.fn();
+jest.mock('@/lib/monitoring', () => ({
+  reportError: (...a: unknown[]) => mockReportError(...a),
+  reportWarning: (...a: unknown[]) => mockReportWarning(...a),
+}));
 jest.mock('@/lib/supabase/client', () => ({
   getSupabase: () => ({ from: () => ({ upsert: (...a: unknown[]) => mockUpsert(...a) }) }),
 }));
@@ -57,6 +63,14 @@ describe('SupabaseConnector.uploadData', () => {
       'booking_conflict',
       expect.any(String),
     ]);
+    // Reported without the row (it holds customer names and phones).
+    expect(mockReportWarning).toHaveBeenCalledWith('Upload refused by the server', {
+      area: 'sync.rejected',
+      table: 'sessions',
+      op: 'PUT',
+      code: '23P01',
+      key: 'booking_conflict',
+    });
   });
 
   it('keeps a write that failed for a temporary reason, to retry later', async () => {
@@ -72,5 +86,36 @@ describe('SupabaseConnector.uploadData', () => {
     await expect(new SupabaseConnector().uploadData(db as never)).rejects.toBeTruthy();
     expect(complete).not.toHaveBeenCalled();
     expect(db.execute).not.toHaveBeenCalled();
+    // Being offline is normal: not reported.
+    expect(mockReportError).not.toHaveBeenCalled();
+  });
+
+  it('reports a server failure that keeps the queue waiting, at most every 10 minutes', async () => {
+    const db = {
+      getNextCrudTransaction: async () => ({
+        crud: [{ op: UpdateType.PATCH, table: 'stations', id: 'x', opData: {} }],
+        complete: jest.fn(),
+      }),
+      execute: jest.fn(),
+    };
+    const table = {
+      update: () => ({ eq: async () => ({ error: { code: '57014', message: 'timeout' } }) }),
+    };
+    const client = jest.requireMock('@/lib/supabase/client') as { getSupabase: () => unknown };
+    const original = client.getSupabase;
+    client.getSupabase = () => ({ from: () => table });
+    try {
+      const connector = new SupabaseConnector();
+      await expect(connector.uploadData(db as never)).rejects.toBeTruthy();
+      await expect(connector.uploadData(db as never)).rejects.toBeTruthy();
+    } finally {
+      client.getSupabase = original;
+    }
+    expect(mockReportError).toHaveBeenCalledTimes(1);
+    expect(mockReportError).toHaveBeenCalledWith(expect.objectContaining({ code: '57014' }), {
+      area: 'sync.upload',
+      table: 'stations',
+      op: 'PATCH',
+    });
   });
 });

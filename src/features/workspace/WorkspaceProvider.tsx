@@ -1,8 +1,9 @@
 import { useQuery, useStatus } from '@powersync/react';
-import { createContext, use, type ReactNode } from 'react';
+import { createContext, use, useEffect, type ReactNode } from 'react';
 
 import { can, isRole, type Permission, type Role } from '@/domain/permissions';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { setMonitoringUser } from '@/lib/monitoring';
 import type { BranchRow, MembershipRow, OrganizationRow } from '@/lib/powersync/schema';
 import { useWorkspaceStore } from '@/lib/settings/workspace-store';
 
@@ -61,6 +62,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
   const activeBranches = branches.filter((b) => b.is_active);
   const branch = activeBranches.find((b) => b.id === storedBranchId) ?? activeBranches[0] ?? null;
+
+  // Error reports carry ids and the role only (see lib/monitoring).
+  const branchId = branch?.id ?? null;
+  useEffect(() => {
+    setMonitoringUser(userId ? { userId, orgId, role, branchId } : null);
+  }, [userId, orgId, role, branchId]);
 
   let status: Workspace['status'] = 'ready';
   if (authStatus !== 'signedIn' || isLoading || (!membership && !sync.hasSynced)) {

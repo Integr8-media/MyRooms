@@ -5,6 +5,10 @@ export const config = {
   powersyncUrl: process.env.EXPO_PUBLIC_POWERSYNC_URL ?? '',
   /** Public web app URL, used in email links opened from the Windows app (e.g. https://app.example.com). */
   appUrl: process.env.EXPO_PUBLIC_APP_URL ?? '',
+  /** Error tracking (Sentry or self-hosted GlitchTip). A DSN is public by design; empty = off. */
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+  /** Shown on error reports: development, pilot, production… */
+  appEnv: process.env.EXPO_PUBLIC_APP_ENV ?? (__DEV__ ? 'development' : 'production'),
 };
 
 export const isBackendConfigured = Boolean(

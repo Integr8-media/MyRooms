@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 8 code done** (branch `feature/phase-8-advanced-reports`): a Reports screen for owners and managers with net profit (income − expenses) and the change against the previous period, branch comparison, station usage per station and type, a busiest-hours heat map, top customers and snack sales, exported as CSV or PDF. Worked out on the device; no server changes. MVP code (Phases 0–6) and Phase 7 are complete; waiting for the VPS to test end to end and run the pilot. Next: Phase 9 (offline hardening). Last updated: 2026-10-30.
+> Status: **Phase 9 code done** (branch `feature/phase-9-offline-hardening`): a sync badge and Sync page on every device (state, last sync, what is waiting, Sync now, device clock and storage checks), floor warnings when offline for long or when uploads are stuck, refused payments listed with their amount, error tracking (Sentry SDK → self-hosted GlitchTip, no personal data), faster reports and live floor on big centers, and nightly backups with a weekly restore check. The full offline day and two-device conflict tests are in the deploy guide (step 7, items 30–36). Phases 0–8 are code complete; waiting for the VPS to test end to end and run the pilot. Next: Phase 10 (release). Last updated: 2026-10-30.
 
 ## 1. Product summary
 
@@ -249,6 +249,7 @@ Each phase ends with something that can be demoed. **Phases 0–6 = MVP** that t
 - Test a full day offline at the center, then sync; conflict scenarios (two devices, same station).
 - Sync status indicator, retry, "last synced" time.
 - Error tracking (Sentry), performance pass on large stations counts, backup/restore check.
+- Built: Sentry SDK reporting to a self-hosted GlitchTip (Sentry-compatible), `server_time()` clock check, benchmark (`npm run perf`), `deploy/backup` scripts.
 
 ### Phase 10 — Release
 

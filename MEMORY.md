@@ -15,8 +15,29 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 6 Calendar and reservations (MVP pilot) | **Code done, VPS test pending**   | `feature/phase-6-calendar-reservations` (not committed) | 256 pgTAP checks pass on PGlite; 207 Jest tests                             |
 | 7 Optional modules                      | **Code done, VPS test pending**   | `feature/phase-7-optional-modules` (not committed)      | 315 pgTAP checks pass on PGlite; 252 Jest tests                             |
 | 8 Advanced reports                      | **Code done, VPS test pending**   | `feature/phase-8-advanced-reports` (not committed)      | No server changes; 278 Jest tests                                           |
-| 9 Offline hardening                     | Not started                       |                                                         |                                                                             |
+| 9 Offline hardening                     | **Code done, VPS test pending**   | `feature/phase-9-offline-hardening` (not committed)     | 4 new pgTAP checks pass on PGlite; 308 Jest tests                           |
 | 10 Release                              | Not started                       |                                                         |                                                                             |
+
+## Phase 9: what was built (2026-10-30)
+
+- **Database** (`supabase/migrations/20261104000000_phase9_server_time.sql`): only `public.server_time()` (stable, security invoker, signed-in users only) for the device clock check. No sync stream or Edge Function change; `create-bill` unchanged, but `zoned-time` changed so the domain copy was re-synced (redeploy step 7b).
+- **Sync status:** `src/lib/powersync/health.ts` (pure: `syncState` offline/connecting/syncing/stuck/error/ok, `isLongOffline` (1 h), `ageOf`, `parseQueuedChange` (`ps_crud.data`), `stuckReason` (a new bill at the head of the queue = the create-bill function), `clockSkew`, `isClockWrong` (2 min)). `useSyncHealth()` feeds `SyncBadge` (floor header, opens `/sync`), `SyncNotices` (floor: offline since…, stuck uploads, wrong clock) and `SyncScreen` (`/sync`: state + hint, last sync, pending count, **Sync now**, upload/download errors, Not saved list, queue by table, clock, browser storage, error reports on/off, app version, row counts of the biggest tables). `SyncStatusCard` was removed.
+- **Control:** `src/lib/powersync/control.ts`: one `SupabaseConnector`, `connectSync()`, `syncNow()` (reconnect = refresh token + retry uploads now), `checkClock()` (round trip to `server_time`, ignored if > 10 s). `useSyncWatch()` in the `(app)` layout checks the clock on each reconnect and every 30 min. In-memory `useSyncStore` (skew, persistent storage, retrying).
+- **Web storage:** `persist.web.ts` calls `navigator.storage.persist()` at sign-in so the browser doesn't evict the local database (phones: always kept). Shown on the Sync page.
+- **Not saved:** refused **bills, payments and refunds** now have their own kinds and show amount + method (Phase 4 open item: money taken offline never vanishes silently).
+- **Error tracking:** `@sentry/react-native` (~8.28) with the DSN in `EXPO_PUBLIC_SENTRY_DSN` (off when empty) and `EXPO_PUBLIC_APP_ENV`. `src/lib/monitoring/` (`initMonitoring`, `wrapRoot`, `setMonitoringUser` = ids + role + branch tags, `reportError`, `reportWarning`); `scrub.ts` removes emails, phones (Latin and Arabic-Indic digits), tokens and personal fields (names, phones, notes, references, reasons) from every event and breadcrumb, keeps uuids. Errors only (no tracing/replay). The connector reports refused uploads (table/op/code/key, never the row) and server errors that block the queue (at most every 10 min per table+op; plain offline isn't reported). Expo Router `ErrorBoundary` (`ErrorScreen`, "Try again") in the root and `(app)` layouts. Self-hosted **GlitchTip** compose in `deploy/glitchtip` (all-in-one, own Postgres, no Valkey). `eas.json` sets `SENTRY_DISABLE_AUTO_UPLOAD=true` (no source maps yet). Desktop workflow passes the two new variables.
+- **Performance:** `zoned-time` caches the UTC offset per UTC hour (only when the offset is equal at the hour's first and last ms; the DST hour falls back to Intl), plus a last-hour fast path and `localDateKey()`. Floor cards only get the ticking `now` when a session runs. Benchmark `src/domain/perf.bench.ts` (`npm run perf`, not in `npm test`): 300 running sessions priced in 18 ms (was 96), a year of income for 40 stations (117k payments) 0.43 s (was 2.8 s), usage 0.29 s, busiest hours 0.53 s, top customers 0.13 s (Jest timings).
+- **Backups:** `deploy/backup/` `backup.sh` (pg_dump -Fc as `supabase_admin` with POSTGRES_PASSWORD from the Supabase .env, row counts file, 14-day rotation, optional rclone `BACKUP_REMOTE`), `check.sh` (restore into a scratch database, compare counts within 1 % + 5 rows, drop it), `restore.sh` (`--yes`; safety dump, PowerSync down, `pg_restore --clean`, Supabase restart, PowerSync storage rebuilt with `down -v`). Deploy guide steps 11 (GlitchTip) and 12 (backups), step 7 checks 30–36 (full offline day, two-device conflicts, clock, stuck uploads, error reports, backups).
+
+**Verified:** lint, format, typecheck, 308 Jest tests (new: sync health domain, scrubbing, connector reporting + throttling, sync badge/notices/screen, refused payment in Not saved, cached time zone vs Intl every 7 min around DST in Cairo, Lord Howe, St John's, Kolkata), perf benchmark within budgets, 9 migrations + pgTAP on PGlite (4 new checks), sync config validates, web export (boots in a browser with no console errors), Android JS bundle, expo-doctor 20/20, `sh -n` on the backup scripts and a dry run of the count comparison.
+**Not verified:** anything signed in (no backend), the full offline day and two-device conflicts at the center, GlitchTip and the Sentry SDK sending real events (web, Windows WebView2, phones), the backup scripts against a real Supabase container (user/password, pg_restore errors in the scratch database), the screens in Arabic and on a phone, Hermes timings on a real phone.
+
+### Phase 9 "done when" still open
+
+- [ ] On the VPS: migration (step 5), step 7b redeploy, steps 11–12, then step 7 items 30–36.
+- [ ] The full offline day at the center (item 31) and the two-device conflicts (item 32) on web, Windows and a phone.
+- [ ] Run `check.sh` once by hand and fix whatever the real Supabase image needs (e.g. if `supabase_admin` can't log in over 127.0.0.1).
+- [ ] Check `/sync` and the floor notices in Arabic and on a phone-sized screen.
 
 ## Phase 8: what was built (2026-10-30)
 
@@ -184,6 +205,11 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Error tracking = Sentry SDK + self-hosted GlitchTip** (fits the self-hosting choice; sentry.io works with the same DSN setting). Optional: no DSN = nothing sent. No personal data in reports (scrubbed on the device), errors only, 30-day retention in GlitchTip.
+- **2026-10-30: Synced history is not limited yet** (Phase 3 open item). Reports run on the device and need the history; the benchmark shows a year of a 40-station center is fine. The Sync page shows row counts so a slow device can be spotted; revisit (server-side reports or limiting cashiers' devices) if a device gets slow.
+- **2026-10-30: A wrong device clock is warned about, not corrected** (warning above 2 minutes, checked against `server_time()`). Times stay device times so offline work keeps its real order.
+- **2026-10-30: Backups are logical dumps** (pg_dump nightly, 14 days on the VPS, optional encrypted rclone remote) with a weekly automatic restore check. PowerSync storage is rebuilt after a restore, not backed up.
+
 - **2026-10-30: Reports stay on the device** (Phase 5 decision kept). If a year of payments/segments gets slow on phones, move heavy reports to server RPCs in Phase 9.
 - **2026-10-30: Utilization counts 24 hours a day** (opening hours aren't set up; `branches.opening_hours` is unused). Ask the client for their hours; then the available time can be limited to them.
 - **2026-10-30: "This month" compares with the whole previous month**, even while this month is still running (likewise this week vs last week). Custom ranges compare with the same number of days just before.
@@ -256,6 +282,9 @@ Running log of progress, decisions and open items. Update it at the end of every
 - The logical `start` style works for absolute positions on native and react-native-web (RNW maps it to left/right by direction).
 
 - `payments.paid_at` on the device is ISO text for local rows but Postgres text (`2026-01-05 12:00:00+00`) after sync, so text comparisons are unreliable. Both start with the UTC date: pre-filter with `substr(paid_at, 1, 10) BETWEEN` (`utcDateWindow`, one day wider each side) and do the exact check after `parseTimestamp`.
+- Jest's environment runs domain code about 10x slower than plain Node (`node --experimental-strip-types` on the `_shared/domain` copy): fine as a phone stand-in for `npm run perf`, but don't compare its numbers with Node.
+- `@sentry/react-native` is mocked globally in `jest.setup.js`; tests that render `SyncScreen` need `@powersync/react` mocked with `useStatus`.
+- expo-doctor prints a harmless Sentry warning (no organization/project in the plugin config).
 - Python on Windows writes CRLF in text mode: open files with `newline=''` when editing them from scripts.
 - **PGlite harness is in the repo** (`scripts/pgcheck/`, `npm run db:check`). Its `tap.sql` used to `grant execute on all functions in schema public to public`, which silently re-opened locked-down functions like `create_bill`; it now grants only the test helpers.
 - Edge Functions need `.ts` extensions on imports; app code imports without them. Never edit `supabase/functions/_shared/domain` by hand: run `npm run domain:sync`.
@@ -299,16 +328,17 @@ Running log of progress, decisions and open items. Update it at the end of every
 9. Run the Phase 6 checks (step 7 items 18–21), try drag/resize on each platform, then the MVP pilot. Ask the client: the no-show grace period, and whether reservations need a deposit or always a phone number.
 10. Run the Phase 7 checks (step 7 items 22-26) after the migration and a PowerSync restart. Ask the client: their snack/drink list and prices, whether the expense categories fit, whether cashiers may restock, and whether a customer discount should also cover items added at checkout.
 11. Run the Phase 8 checks (step 7 items 27–29). Ask the client: their opening hours (for usage %), and which report numbers they look at most (to put first).
-12. Phase 9: offline hardening (full offline day, sync status/retry, Sentry, limit synced history, backups).
+12. Run the Phase 9 checks (deploy steps 11–12, step 7 items 30–36), including a full offline day at the center. Ask the client: is a 2-minute clock tolerance right, and who should receive error alerts?
+13. Phase 10: release (icons, store listings, signed Windows installer with auto-update, production domain, user guide).
 
 ### Open items from Phase 4
 
-- If `create-bill` is missing or answers 5xx, a device's upload queue stops at the bill (nothing lost, but nothing after it uploads). Consider a "waiting on the server" hint in the sync card (Phase 9).
-- A bill the server rejects (e.g. because its session's end was rejected) disappears together with any payments taken for it on the device. Same conflict UI as Phases 6/9.
+- If `create-bill` is missing or answers 5xx, a device's upload queue stops at the bill (nothing lost, but nothing after it uploads). Phase 9: the badge shows **Not uploading** and the floor names the bill service.
+- A bill the server rejects (e.g. because its session's end was rejected) disappears together with any payments taken for it on the device. Phase 9: they are listed under Not saved with the amount and method, so the money can be recorded again.
 - The server doesn't require refunds before a void. Reports must exclude void bills' payments.
 
 ### Open items from Phase 3
 
-- Every session and segment ever recorded syncs to every device of the branch. Fine for now; limit to active + recent sessions (or move history to server-side reports) in Phase 9.
+- Every session and segment ever recorded syncs to every device of the branch. Phase 9 decision: kept (reports need it; benchmarked fine for a year); revisit if a device gets slow.
 - When the server rejects an offline session (station already taken), the losing device's session silently disappears after sync. Needs the conflict UI planned for Phases 6/9.
 - An active session can be left with no running segment if a client closes one without opening the next (the app never does this). Phase 4 billing should treat gaps as unbilled and flag them.

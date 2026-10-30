@@ -143,7 +143,87 @@
     "syncing": "Syncing…",
     "pending": "Waiting to upload: {{count}}",
     "lastSynced": "Last synced: {{time}}",
-    "never": "never"
+    "never": "never",
+    "state": {
+      "ok": "Up to date",
+      "syncing": "Syncing…",
+      "connecting": "Connecting…",
+      "offline": "Offline",
+      "stuck": "Not uploading",
+      "error": "Sync problem"
+    },
+    "stateHint": {
+      "ok": "Everything on this device is saved on the server.",
+      "syncing": "Sending and receiving changes.",
+      "connecting": "Trying to reach the server.",
+      "offline": "No connection. Keep working: changes are saved on this device and upload when the internet is back. Don't sign out or clear the browser data meanwhile.",
+      "stuck": "The server is reachable but keeps refusing to take the changes for now. They are kept on this device and retried.",
+      "error": "Connected, but this device can't receive updates. Try Sync now; if it continues, tell the owner."
+    },
+    "badgePending": "{{count}} waiting",
+    "age": {
+      "now": "just now",
+      "minutes": "{{count}} min ago",
+      "hours": "{{count}} h ago",
+      "days": "{{count}} days ago"
+    },
+    "lastSyncedLabel": "Last synced",
+    "pendingLabel": "Changes waiting to upload",
+    "now": "Sync now",
+    "retrying": "Connecting…",
+    "details": "Sync details",
+    "longOffline": "This device has been offline since {{time}} ({{count}} changes waiting). Everything is kept here and uploads when the internet is back. Don't sign out or clear the browser data.",
+    "stuck": {
+      "bill_function": "Uploads are waiting on the server's bill service ({{count}} changes). Nothing is lost. Tell the owner: the create-bill function may not be running (deploy guide step 7b).",
+      "server": "The server isn't taking this device's changes right now ({{count}} waiting). Nothing is lost; they are retried automatically."
+    },
+    "uploadError": "Last upload error: {{message}}",
+    "downloadError": "Last download error: {{message}}",
+    "queueTitle": "Waiting to upload",
+    "queueHint": "Changes made on this device that the server doesn't have yet.",
+    "tables": {
+      "sessions": "Sessions and reservations",
+      "session_segments": "Session times",
+      "bills": "Bills",
+      "payments": "Payments and refunds",
+      "session_items": "Snacks and drinks sold",
+      "customers": "Customers",
+      "products": "Products",
+      "stock_movements": "Stock changes",
+      "expenses": "Expenses",
+      "stations": "Stations",
+      "station_types": "Station types",
+      "rate_rules": "Prices",
+      "packages": "Packages",
+      "branches": "Branches",
+      "organizations": "Organization",
+      "memberships": "Staff",
+      "member_branches": "Staff branches",
+      "other": "Other"
+    },
+    "deviceTitle": "This device",
+    "clock": {
+      "label": "Clock",
+      "ok": "Correct",
+      "wrong": "Wrong",
+      "unknown": "Not checked yet (needs internet)",
+      "checkedAt": "Clock checked",
+      "behind": "This device's clock is {{count}} min behind the server. Sessions, payments and bills use this clock: set the right time (automatic time) in the device settings.",
+      "ahead": "This device's clock is {{count}} min ahead of the server. Sessions, payments and bills use this clock: set the right time (automatic time) in the device settings."
+    },
+    "storage": {
+      "label": "Local data",
+      "kept": "Kept",
+      "mayClear": "May be cleared by the browser",
+      "unknown": "Unknown",
+      "hint": "The browser may clear this app's data when the disk is low. Install the web app (or use the Windows app) so changes waiting to upload are never lost."
+    },
+    "errorReports": "Error reports",
+    "errorReportsOn": "On (no personal data)",
+    "errorReportsOff": "Off",
+    "appVersion": "App version",
+    "dataTitle": "Data on this device",
+    "dataHint": "Rows synced to this device. Very large numbers can make reports slower."
   },
   "settings": {
     "title": "Settings",
@@ -610,7 +690,10 @@
       "item": "Snack or drink not saved",
       "customer": "Customer not saved",
       "stock": "Stock change not saved",
-      "expense": "Expense not saved"
+      "expense": "Expense not saved",
+      "bill": "Bill not saved",
+      "payment": "Payment not saved",
+      "refund": "Refund not saved"
     },
     "reason": "Reason: {{reason}}",
     "bookAgain": "Book again",
@@ -822,5 +905,11 @@
       "payments": "Payments",
       "refunds": "Refunds"
     }
+  },
+  "crash": {
+    "title": "Something went wrong",
+    "body": "This screen stopped working. Your data is safe on this device.",
+    "reported": "The problem was reported.",
+    "retry": "Try again"
   }
 }

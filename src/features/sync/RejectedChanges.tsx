@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import { formatMoney } from '@/domain/money';
 import { rangeToForm } from '@/domain/reservations';
 import { parseTimestamp } from '@/domain/sessions';
 import { formatDay, timeRange } from '@/features/reservations/data';
@@ -26,6 +27,9 @@ type Parsed = {
     | 'customer'
     | 'stock'
     | 'expense'
+    | 'bill'
+    | 'payment'
+    | 'refund'
     | 'other';
 };
 
@@ -50,6 +54,8 @@ function parse(row: Row): Parsed {
   else if (row.table_name === 'customers') kind = 'customer';
   else if (row.table_name === 'stock_movements') kind = 'stock';
   else if (row.table_name === 'expenses') kind = 'expense';
+  else if (row.table_name === 'bills') kind = 'bill';
+  else if (row.table_name === 'payments') kind = data.kind === 'refund' ? 'refund' : 'payment';
   return { row, data, kind };
 }
 
@@ -108,8 +114,20 @@ export function RejectedChanges() {
           start != null
             ? `${formatDay(rangeToForm(start, start, timeZone).date, i18n.language)} ${timeRange(start, end, timeZone)}`
             : null;
+        // Money that was taken on this device but refused: say how much and how, so it can
+        // be recorded again (the cash is in the drawer either way).
+        const money =
+          (p.kind === 'payment' || p.kind === 'refund' || p.kind === 'expense') &&
+          typeof p.data.amount === 'number'
+            ? [
+                formatMoney(p.data.amount, i18n.language),
+                str(p.data.method) ? t(`checkout.method.${str(p.data.method)}` as never) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : null;
         // Items, customers and products have a name; reservations a customer name.
-        const details = [row.station_name, when, str(p.data.customer_name), str(p.data.name)]
+        const details = [row.station_name, when, money, str(p.data.customer_name), str(p.data.name)]
           .filter(Boolean)
           .join(' · ');
         return (

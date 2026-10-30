@@ -31,3 +31,8 @@ sync.example.com {
 # `supabase_default` and `myrooms-powersync_default` networks, mount
 # /var/www/myrooms into the container, and use `reverse_proxy kong:8000` /
 # `reverse_proxy powersync:8080` instead.
+
+# Optional (step 11): GlitchTip error tracking.
+errors.example.com {
+	reverse_proxy localhost:8090
+}

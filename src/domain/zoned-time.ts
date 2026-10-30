@@ -39,8 +39,8 @@ function formatter(timeZone: string): Intl.DateTimeFormat {
   return f;
 }
 
-/** The wall-clock date and time at `instant` in `timeZone`. */
-export function toLocal(instant: number, timeZone: string): LocalDateTime {
+/** The wall clock straight from Intl (exact, but slow: about 10-30 µs a call). */
+function intlLocal(instant: number, timeZone: string): LocalDateTime {
   const parts: Record<string, number> = {};
   for (const p of formatter(timeZone).formatToParts(new Date(instant))) {
     if (p.type !== 'literal') parts[p.type] = Number(p.value);
@@ -59,11 +59,65 @@ export function toLocal(instant: number, timeZone: string): LocalDateTime {
   };
 }
 
-/** Offset of `timeZone` from UTC at `instant`, in milliseconds (Cairo: +2h or +3h). */
-export function offsetAt(instant: number, timeZone: string): number {
-  const l = toLocal(instant, timeZone);
+function intlOffset(instant: number, timeZone: string): number {
+  const l = intlLocal(instant, timeZone);
   const wall = Date.UTC(l.year, l.month - 1, l.day, l.hour, l.minute, l.second, l.millisecond);
   return wall - instant;
+}
+
+/**
+ * Reports and the live floor convert many thousands of instants, so the offset is cached
+ * per hour of UTC time. An hour is only cached when the offset is the same at its first and
+ * last millisecond (offsets change at most once in months, so then it is the same all
+ * through); the hour of a DST change returns null and is worked out exactly each time.
+ */
+const HOUR_MS = 3_600_000;
+const MAX_CACHED_HOURS = 100_000;
+const hourOffsets = new Map<string, number | null>();
+
+// Instants usually come in time order, so the previous hour is the most likely hit.
+let lastZone = '';
+let lastHour = NaN;
+let lastOffset: number | null = null;
+
+function cachedOffset(instant: number, timeZone: string): number | null {
+  const hour = Math.floor(instant / HOUR_MS);
+  if (hour === lastHour && timeZone === lastZone) return lastOffset;
+  const key = `${timeZone}|${hour}`;
+  let offset = hourOffsets.get(key);
+  if (offset === undefined) {
+    const first = intlOffset(hour * HOUR_MS, timeZone);
+    const last = intlOffset(hour * HOUR_MS + HOUR_MS - 1, timeZone);
+    offset = first === last ? first : null;
+    if (hourOffsets.size >= MAX_CACHED_HOURS) hourOffsets.clear();
+    hourOffsets.set(key, offset);
+  }
+  lastZone = timeZone;
+  lastHour = hour;
+  lastOffset = offset;
+  return offset;
+}
+
+/** The wall-clock date and time at `instant` in `timeZone`. */
+export function toLocal(instant: number, timeZone: string): LocalDateTime {
+  const offset = cachedOffset(instant, timeZone);
+  if (offset == null) return intlLocal(instant, timeZone);
+  const wall = new Date(instant + offset);
+  return {
+    year: wall.getUTCFullYear(),
+    month: wall.getUTCMonth() + 1,
+    day: wall.getUTCDate(),
+    hour: wall.getUTCHours(),
+    minute: wall.getUTCMinutes(),
+    second: wall.getUTCSeconds(),
+    millisecond: wall.getUTCMilliseconds(),
+    weekday: wall.getUTCDay(),
+  };
+}
+
+/** Offset of `timeZone` from UTC at `instant`, in milliseconds (Cairo: +2h or +3h). */
+export function offsetAt(instant: number, timeZone: string): number {
+  return cachedOffset(instant, timeZone) ?? intlOffset(instant, timeZone);
 }
 
 const DAY_MS = 86_400_000;
@@ -107,6 +161,22 @@ export function fromLocal(
   const wall = Date.UTC(year, month - 1, day, hour, minute);
   return wall - offsetAt(wall - DAY_MS, timeZone);
 }
+
+/** "YYYY-MM-DD" of the local date at `instant` (faster than dateKey(toLocal(…)) in loops). */
+export function localDateKey(instant: number, timeZone: string): string {
+  const offset = cachedOffset(instant, timeZone);
+  if (offset == null) return dateKey(intlLocal(instant, timeZone));
+  // Same local day as the last call: reuse the key.
+  const wall = instant + offset;
+  const day = Math.floor(wall / DAY_MS);
+  if (day === lastKeyDay) return lastKey;
+  const d = new Date(day * DAY_MS);
+  lastKeyDay = day;
+  lastKey = dateKey({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() });
+  return lastKey;
+}
+let lastKeyDay = NaN;
+let lastKey = '';
 
 /** "YYYY-MM-DD" for a local date (sorts and compares as text). */
 export function dateKey(l: Pick<LocalDateTime, 'year' | 'month' | 'day'>): string {

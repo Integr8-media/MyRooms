@@ -379,4 +379,21 @@ describe('RejectedChanges', () => {
       'rej-2',
     ]);
   });
+
+  it('shows the amount and method of a refused payment', async () => {
+    mockRejections = [
+      {
+        id: 'rej-p',
+        table_name: 'payments',
+        op: 'PUT',
+        row_id: 'p1',
+        error: 'invalid_session',
+        station_name: null,
+        data: JSON.stringify({ kind: 'payment', method: 'cash', amount: 12550, bill_id: 'b1' }),
+      },
+    ];
+    await render(<RejectedChanges />);
+    expect(screen.getByTestId('rejected-rej-p')).toHaveTextContent(/Payment not saved/);
+    expect(screen.getByTestId('rejected-rej-p')).toHaveTextContent(/125\.50.*Cash/);
+  });
 });

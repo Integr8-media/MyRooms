@@ -7,6 +7,7 @@ import {
 
 import { config } from '@/lib/config';
 import { errorKey, type ErrorKey } from '@/lib/errors';
+import { reportError, reportWarning } from '@/lib/monitoring';
 import { getSupabase } from '@/lib/supabase/client';
 
 /**
@@ -91,6 +92,27 @@ async function recordRejection(database: AbstractPowerSyncDatabase, op: CrudEntr
   }
 }
 
+/** True for a server answer (an HTTP status), false for "no connection" (fetch failed). */
+function isServerError(error: unknown): boolean {
+  const e = error as { status?: unknown; context?: unknown; code?: unknown };
+  if (typeof e?.status === 'number' && e.status >= 500) return true;
+  if (e?.context instanceof Response && e.context.status >= 500) return true;
+  // PostgREST errors carry a Postgres code (e.g. 57014 statement timeout, PGRST…).
+  return typeof e?.code === 'string' && e.code.length > 0;
+}
+
+const REPORT_EVERY_MS = 10 * 60 * 1000;
+const lastReported = new Map<string, number>();
+
+/** Uploads are retried every few seconds; report the same problem at most every 10 minutes. */
+function reportUploadFailure(table: string, op: string, error: unknown) {
+  const key = `${table}:${op}`;
+  const now = Date.now();
+  if (now - (lastReported.get(key) ?? 0) < REPORT_EVERY_MS) return;
+  lastReported.set(key, now);
+  reportError(error, { area: 'sync.upload', table, op });
+}
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
     const { data, error } = await getSupabase().auth.getSession();
@@ -138,10 +160,21 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
       if (typeof code === 'string' && FATAL_RESPONSE_CODES.some((re) => re.test(code))) {
         // Dropped so the queue keeps moving, but recorded for the "not saved" list.
         console.error('PowerSync: discarding rejected write', code, error);
-        if (current) await recordRejection(database, current, error);
+        if (current) {
+          await recordRejection(database, current, error);
+          reportWarning('Upload refused by the server', {
+            area: 'sync.rejected',
+            table: current.table,
+            op: current.op,
+            code,
+            key: rejectionError(current.table, error),
+          });
+        }
         await transaction.complete();
       } else {
-        // Network or temporary error: PowerSync retries later.
+        // Network or temporary error: PowerSync retries later. Server errors (not just
+        // "offline") are reported: they keep the whole queue waiting.
+        if (current && isServerError(error)) reportUploadFailure(current.table, current.op, error);
         throw error;
       }
     }
