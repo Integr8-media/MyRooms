@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "MyRooms",
-  "version": "1.0.0",
+  "version": "../package.json",
   "identifier": "com.integr8media.myrooms",
   "build": {
     "frontendDist": "../dist",
@@ -35,6 +35,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "integr8 media",
+    "shortDescription": "MyRooms — gaming center management",
+    "category": "Business",
+    "copyright": "© 2026 integr8 media",
+    "windows": {
+      "nsis": {
+        "languages": ["English", "Arabic"],
+        "displayLanguageSelector": true,
+        "installMode": "currentUser"
+      }
+    }
   }
 }

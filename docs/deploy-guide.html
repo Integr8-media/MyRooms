@@ -146,7 +146,7 @@ html { scroll-behavior: smooth; }
     <h1>Deploying MyRooms</h1>
     <p class="lede">Every step to put the backend and web app on our Oracle VPS (Docker + Caddy) and to build the Windows, Android and iOS apps. This page is updated at the end of each implementation phase.</p>
     <div class="meta">
-      <span class="chip">Current phase: <strong>Phase 9 · Offline hardening</strong></span>
+      <span class="chip">Current phase: <strong>Phase 10 · Release</strong></span>
       <span class="chip">Updated: <strong>2026-10-30</strong></span>
       <span class="chip">Supabase: <strong>self-hosted v0.8.3</strong></span>
       <span class="chip">PowerSync service: <strong>1.27.2</strong></span>
@@ -251,7 +251,7 @@ html { scroll-behavior: smooth; }
               <tr><td class="ph">7 Optional modules</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One new migration (customers, products, session items, stock movements, expenses; bills now include items and the customer's default discount) and new sync streams: repeat step 5 and <strong>restart PowerSync</strong>. No new setting or Edge Function (<code>create-bill</code> is unchanged). Publish the web build (step 8), Windows installer (step 9) and app builds as usual.</td></tr>
               <tr><td class="ph">8 Advanced reports</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. <strong>Nothing to deploy on the server</strong>: no migration, sync stream, setting or Edge Function. Reports (net profit, usage, busiest hours, top customers, snack sales, branch and period comparison, CSV/PDF export) are worked out on each device from what it already syncs. Publish the web build (step 8) and Windows installer (step 9); phones need a new development build (step 10: <code>expo-file-system</code>).</td></tr>
               <tr><td class="ph">9 Offline hardening</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS. One small migration (<code>server_time()</code> for the device clock check): repeat step 5. No sync stream or Edge Function change. Phones need a new development build (step 10: the error-tracking SDK). New optional step 11 (GlitchTip error tracking, self-hosted) and new step 12 (nightly backups and a weekly restore check). Step 7 gains checks 30–36, including a full offline day and two-device conflicts.</td></tr>
-              <tr><td class="ph">10 Release</td><td><span class="pill plan">Planned</span></td><td>Windows code signing + auto-update, Google Play and App Store releases, production domain.</td></tr>
+              <tr><td class="ph">10 Release</td><td><span class="pill wip">In progress</span></td><td>Code done, not yet tested on the VPS or in the stores. One migration (<code>delete_account()</code> for <strong>Delete my account</strong>): repeat step 5. New <strong>required</strong> Edge Function <code>delete-account</code> (step 7b). The web export now carries the user guide and privacy policy (step 8). Windows releases update themselves: a signing key, GitHub variables and the <code>/desktop</code> Caddy block (step 9), optional code signing. Phones: production builds and store submission (step 10, <code>docs/store/README.md</code>). New icons and splash, so phones need new builds. Step 7 gains checks 37–41.</td></tr>
             </tbody>
           </table>
         </div>
@@ -484,6 +484,11 @@ EXPO_PUBLIC_APP_ENV=pilot</pre><span class="tag">.env.local</span></div>
             <li><strong>Stuck uploads:</strong> <code>docker compose stop functions</code> in <code>~/myrooms/supabase</code>, then end a session: the badge turns <strong>Not uploading</strong> and the floor explains the bill service is down. Start it again: the bill uploads.</li>
             <li><strong>Error reports</strong> (after step 11): GlitchTip shows events from each platform with ids and roles only (no names, emails or phone numbers); a refused change from item 32 appears as a warning "Upload refused by the server".</li>
             <li><strong>Backups</strong> (after step 12): <code>ls ~/backups</code> shows last night's dump, and <code>check.sh</code> ends with <strong>restore check PASSED</strong>.</li>
+            <li><strong>Quick setup</strong> (Phase 10): a new owner creates an organization; the floor shows <strong>Setup checklist</strong>. <strong>Quick setup</strong> with 3 PlayStation rooms at 60 EGP and 5 PCs at 20 EGP makes Room 1–3 and PC 1–5, and Price preview gives 60 EGP for an hour in a room. Inviting someone (or <strong>Hide this</strong>) removes the checklist.</li>
+            <li><strong>Delete my account</strong> (needs <code>delete-account</code>, step 7b): (a) the only owner of an organization with a cashier is told to make someone else owner first; (b) a cashier types <strong>DELETE</strong>: signed out, can't sign in again, gone from Staff, their payments stay in the reports; (c) the owner of a test organization with no staff: the organization and its rows are gone in Studio.</li>
+            <li><strong>Help links:</strong> Settings → <strong>User guide</strong> and <strong>Privacy policy</strong> open on the web, Windows (in the browser) and phones, in the app's language.</li>
+            <li><strong>Windows update</strong> (after two releases, step 9): within 6 hours or at the next start the floor shows <strong>Version … is available</strong>; <strong>Install and restart</strong> reopens the app updated, still signed in, nothing lost.</li>
+            <li><strong>Store builds</strong> (step 10): the Android build installs from the Play internal track and the iOS build from TestFlight; on a phone in Arabic the app is called <strong>ماي رومز</strong>.</li>
           </ol>
           <div class="check"><span>The cashier sees only their branch and no Staff or Branches settings, sees the prices read-only, and can't add stations. The owner sees every branch and all staff. The new stations show on the cashier's device. The cashier can start and end sessions and take payments, but has no <strong>Cancel session</strong>, discount, refund or void buttons, can't restock or change product prices or customer discounts, and sees no expenses.</span></div>
         </div>
@@ -499,9 +504,10 @@ EXPO_PUBLIC_APP_ENV=pilot</pre><span class="tag">.env.local</span></div>
           <ul>
             <li><code>create-bill</code> (<strong>required</strong> from Phase 4): when a bill uploads, it calculates the final bill on the server with the same pricing code as the app (<code>_shared/domain</code>, a copy of <code>src/domain</code> made by <code>npm run domain:sync</code>) and saves it.</li>
             <li><code>invite-staff</code>: saves an invitation and emails people who don't have an account yet. Without it, invitations still work, but nobody is emailed (the app says so).</li>
+            <li><code>delete-account</code> (<strong>required for the store releases</strong>, Phase 10): <strong>Settings → Account → Delete my account</strong>. Removes the person from their organizations (an organization where they are the only member is deleted with all its data; the only owner of one with staff is refused) and soft-deletes their sign-in (email scrubbed, their records stay).</li>
           </ul>
           <div class="code"><pre>cd ~/myrooms/app &amp;&amp; git pull
-for f in _shared create-bill invite-staff; do
+for f in _shared create-bill invite-staff delete-account; do
   rm -rf ~/myrooms/supabase/volumes/functions/$f
   cp -r supabase/functions/$f ~/myrooms/supabase/volumes/functions/
 done
@@ -522,7 +528,8 @@ cd ~/myrooms/supabase &amp;&amp; docker compose restart functions</pre><span cla
           <div class="code"><pre>npm run build:web                                         <span class="c"># → dist/</span>
 rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><span class="tag">PC</span></div>
           <div class="note"><span>No rsync on Windows? Use <code>scp -r dist/* &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</code>, or run the rsync from WSL.</span></div>
-          <div class="check"><span><code>https://app.example.com</code> shows the sign-in page; after signing in, the sync badge shows <strong>Up to date</strong>.</span></div>
+          <p>The export includes the user guide and privacy policy: <code>/guide.html</code>, <code>/guide-ar.html</code>, <code>/privacy.html</code>. Fill in <code>[COMPANY NAME]</code>, <code>[SUPPORT EMAIL]</code> and <code>[EFFECTIVE DATE]</code> in <code>public/privacy.html</code> before the first store submission: the stores link to it.</p>
+          <div class="check"><span><code>https://app.example.com</code> shows the sign-in page; after signing in, the sync badge shows <strong>Up to date</strong>. <code>https://app.example.com/privacy.html</code> opens.</span></div>
         </div>
       </section>
 
@@ -533,12 +540,20 @@ rsync -az --delete dist/ &lt;user&gt;@&lt;vps-ip&gt;:/var/www/myrooms/</pre><spa
             <div class="step-title"><h3>Build the Windows app</h3><span class="where">Where: <b>your PC</b> or <b>GitHub Actions</b></span></div>
             <label class="done-toggle"><input type="checkbox" id="done-s9"> Done</label>
           </div>
-          <p><strong>Locally</strong> (uses <code>.env.local</code>; <code>EXPO_PUBLIC_APP_URL</code> makes password-reset emails sent from Windows link to the web app):</p>
-          <div class="code"><pre>npm run desktop:build
-<span class="c"># installer: src-tauri/target/release/bundle/nsis/MyRooms_&lt;version&gt;_x64-setup.exe</span></pre><span class="tag">PC</span></div>
-          <p><strong>From GitHub:</strong> add the four <code>EXPO_PUBLIC_*</code> values (including <code>EXPO_PUBLIC_APP_URL</code>) as repository <strong>Variables</strong> (Settings → Secrets and variables → Actions → Variables). The "Windows desktop build" workflow runs on pushes to <code>dev</code> and <code>main</code>, or by hand, and uploads the installer as a build artifact.</p>
-          <div class="note"><span>The installer isn't code-signed until Phase 10, so Windows SmartScreen shows a warning ("More info" → "Run anyway").</span></div>
-          <div class="note"><span>Since Phase 3 the Windows app shows session alerts through the Tauri notification plugin. Rebuild and reinstall after updating.</span></div>
+          <p><strong>Test builds:</strong> <code>npm run desktop:build</code> locally (uses <code>.env.local</code>; set <code>EXPO_PUBLIC_APP_URL</code> so email links and help pages open the web app), or the "Windows desktop build" workflow on pushes to <code>dev</code>/<code>main</code> (the <code>EXPO_PUBLIC_*</code> values as repository <strong>Variables</strong>). These never check for updates.</p>
+          <p><strong>Releases with auto-update</strong> (Phase 10): the app checks <code>https://app.example.com/desktop/latest.json</code> at start and every 6 hours and shows <strong>Version … is available</strong> with <strong>Install and restart</strong>. Updates are signed with our key. Once:</p>
+          <div class="code"><pre>npx tauri signer generate -w myrooms-updater.key   <span class="c"># key + password into a password manager, never git</span></pre><span class="tag">PC</span></div>
+          <div class="code"><pre>sudo mkdir -p /var/www/myrooms-desktop &amp;&amp; sudo chown $USER /var/www/myrooms-desktop
+<span class="c"># add the /desktop block from deploy/caddy/Caddyfile.example, then reload Caddy</span></pre><span class="tag">VPS</span></div>
+          <ul>
+            <li>GitHub <strong>Variables</strong>: <code>MYROOMS_UPDATE_URL</code> = <code>https://app.example.com/desktop</code>, <code>TAURI_UPDATER_PUBKEY</code> = contents of <code>myrooms-updater.key.pub</code>.</li>
+            <li>GitHub <strong>Secrets</strong>: <code>TAURI_SIGNING_PRIVATE_KEY</code>, <code>TAURI_SIGNING_PRIVATE_KEY_PASSWORD</code>; optional <code>VPS_SSH_KEY</code>, <code>VPS_HOST</code>, <code>VPS_USER</code> to upload automatically.</li>
+          </ul>
+          <p>Each release:</p>
+          <div class="code"><pre>npm run version:set -- 1.0.1 &amp;&amp; npm install --package-lock-only
+git commit -am "Release 1.0.1" &amp;&amp; git tag v1.0.1 &amp;&amp; git push --follow-tags</pre><span class="tag">PC</span></div>
+          <p>The tag builds the signed installer and <code>latest.json</code> (artifact <code>myrooms-windows-release</code>) and, with the SSH secrets, copies them to <code>/var/www/myrooms-desktop</code>, installer first. Otherwise copy them yourself, <code>latest.json</code> last. The first release is installed by hand; later ones arrive by themselves. Installs per user (no admin rights), in English or Arabic.</p>
+          <div class="note"><span><strong>Code signing</strong> removes the SmartScreen warning. Either a <code>.pfx</code> certificate (secrets <code>WINDOWS_CERTIFICATE</code> in base64 + <code>WINDOWS_CERTIFICATE_PASSWORD</code>) or a cloud signing service such as Azure Artifact Signing (variable <code>WINDOWS_SIGN_COMMAND</code> with <code>%1</code> for the file). Most certificates sold since 2023 sit on a hardware token, so the cloud option is usually easier. Who owns it is open question 6.</span></div>
           <div class="check"><span>The installed app opens on the sign-in page; after signing in, its sync badge shows <strong>Up to date</strong>.</span></div>
         </div>
       </section>
@@ -562,6 +577,17 @@ npx eas-cli env:create --environment development --name EXPO_PUBLIC_POWERSYNC_UR
 npx eas-cli build --profile development --platform android   <span class="c"># installable APK</span>
 npx eas-cli build --profile development --platform ios       <span class="c"># needs an Apple Developer account</span></pre><span class="tag">PC</span></div>
           <div class="note"><span>Phase 3 added <code>expo-notifications</code>, Phase 4 <code>expo-print</code> and <code>expo-sharing</code>, Phase 8 <code>expo-file-system</code> and Phase 9 <code>@sentry/react-native</code> (native code): make a new development build after updating. For error reports also add <code>EXPO_PUBLIC_SENTRY_DSN</code> and <code>EXPO_PUBLIC_APP_ENV</code> with <code>env:create</code>. <code>eas.json</code> sets <code>SENTRY_DISABLE_AUTO_UPLOAD=true</code>, so builds don't try to upload source maps. Only local notifications are used, so no push keys (FCM / APNs) are needed.</span></div>
+          <p><strong>Store releases</strong> (Phase 10). The checklist (accounts, Data safety / App Privacy, screenshots, review notes with a demo account) is <code>docs/store/README.md</code>; the listing text is in <code>docs/store/listing.en.md</code> and <code>listing.ar.md</code>.</p>
+          <div class="code"><pre><span class="c"># production values once (same names as above, plus EXPO_PUBLIC_APP_URL and EXPO_PUBLIC_SENTRY_DSN)</span>
+npx eas-cli build --profile production --platform android    <span class="c"># .aab</span>
+npx eas-cli build --profile production --platform ios
+npx eas-cli submit --profile production --platform ios       <span class="c"># TestFlight</span>
+npx eas-cli submit --profile production --platform android   <span class="c"># after the first upload by hand</span></pre><span class="tag">PC</span></div>
+          <ul>
+            <li><strong>Google Play:</strong> upload the first <code>.aab</code> by hand (Internal testing). Then save a service-account key as <code>google-service-account.json</code> in the repo root (ignored by git) for <code>eas submit</code> (internal track, draft).</li>
+            <li><strong>App Store:</strong> <code>eas submit</code> uploads to TestFlight; submit for review in App Store Connect. No export-compliance question (only HTTPS).</li>
+            <li>Deploy <code>delete-account</code> (7b) and publish the web app (8) <strong>before</strong> submitting: reviewers try account deletion and the privacy link.</li>
+          </ul>
           <div class="check"><span>The build installs on a phone and opens on the sign-in page. After signing in, the sync badge shows <strong>Up to date</strong> and branches created on the web show up on the phone.</span></div>
         </div>
       </section>
@@ -641,7 +667,8 @@ crontab -e                                     <span class="c"># add these two l
               <tr><td>Sync rules</td><td>On the VPS: <code>cd ~/myrooms/app &amp;&amp; git pull</code>, then <code>docker compose restart powersync</code> in <code>deploy/powersync</code></td></tr>
               <tr><td>Edge Function, or anything in <code>src/domain</code></td><td>Repeat step 7b (<code>create-bill</code> uses a copy of <code>src/domain</code>)</td></tr>
               <tr><td>App code (web)</td><td>Repeat step 8</td></tr>
-              <tr><td>App code (Windows / mobile)</td><td>Rebuild (steps 9 and 10) and reinstall</td></tr>
+              <tr><td>App code (Windows)</td><td>Tag a release (step 9): installed apps update themselves</td></tr>
+              <tr><td>App code (phones)</td><td>Production build + submit (step 10), same version as Windows (<code>npm run version:set</code>)</td></tr>
               <tr><td>GlitchTip</td><td><code>docker compose pull &amp;&amp; docker compose --env-file .env up -d</code> in <code>deploy/glitchtip</code></td></tr>
               <tr><td>Supabase version</td><td>Follow the official upgrade notes, using <code>sh run.sh</code> / <code>update.sh</code> in <code>~/myrooms/supabase</code></td></tr>
             </tbody>
@@ -681,6 +708,7 @@ crontab -e                                     <span class="c"># add these two l
           <p>One entry each time a phase changes how MyRooms is deployed.</p>
         </div>
         <div class="log">
+          <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 10.</strong> Release. New migration: <code>delete_account()</code> (service role only) and a fix so deleting a whole session also removes its items. New <strong>required</strong> Edge Function <code>delete-account</code> for <strong>Settings → Account → Delete my account</strong> (also on the onboarding screen), required by Google Play and the App Store (step 7b copies four folders now). The web export now includes the user guide (English, Arabic) and the privacy policy (step 8). Windows releases are signed for <strong>auto-update</strong> from <code>/desktop/latest.json</code> on the app domain, built by tagging <code>v*</code> (new GitHub variables and secrets, a <code>/desktop</code> Caddy block, optional code signing; step 9). Store builds and submission (step 10, <code>docs/store/</code>). New app icon, splash and Arabic app name: phones need new builds. Owners get <strong>Quick setup</strong> and a setup checklist. Step 7 gains checks 37–41.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 9.</strong> Offline hardening. New migration: <code>server_time()</code>, used by each device to warn when its clock is wrong. No sync stream or Edge Function change. The floor's sync card became a <strong>sync badge</strong> with a <strong>Sync</strong> page (state, last sync, what is waiting, <strong>Sync now</strong>, clock and storage checks), plus floor warnings after an hour offline or when uploads are stuck (e.g. on <code>create-bill</code>). Refused payments and bills now show in <strong>Not saved</strong> with their amount. Error tracking with the Sentry SDK and a self-hosted <strong>GlitchTip</strong> (new optional step 11, new variables <code>EXPO_PUBLIC_SENTRY_DSN</code>, <code>EXPO_PUBLIC_APP_ENV</code>); phones need a new development build. New step 12: nightly backups, a weekly restore check and a restore script (<code>deploy/backup</code>). Reports and the live floor are faster on big centers. Step 7 gains checks 30–36 (full offline day, two-device conflicts).</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 8.</strong> Advanced reports, worked out on each device: no migration, sync stream or Edge Function. The floor's <strong>Income</strong> button is now <strong>Reports</strong> (Overview with net profit and the change against the previous period, branch comparison, Usage with busiest hours, top Customers, Snacks &amp; drinks sales) with CSV and PDF export. Phones need a new development build (<code>expo-file-system</code>). Step 7 gains checks 27–29.</div></div>
           <div class="log-item"><time datetime="2026-10-30">2026-10-30</time><div><strong>Phase 7.</strong> Optional modules. New migration: <code>customers</code> (org-wide, default discount set by owners and managers), <code>products</code> (owners set prices), <code>session_items</code> (snacks and drinks on a session; the server sets the price and keeps the bill's items total), <code>stock_movements</code> (restocks and count corrections per branch; stock = movements − items sold) and <code>expenses</code> (owners and branch managers only), all audited. <code>create_bill()</code> now adds the items and the customer's default discount, so the <code>create-bill</code> Edge Function is unchanged. New sync streams (<code>org_catalog</code>, plus items, stock and expenses in the branch streams): <strong>restart PowerSync</strong>. Step 5's check lists the new tables; step 7 gains checks 22–26.</div></div>

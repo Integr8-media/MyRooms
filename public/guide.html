@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MyRooms user guide</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --fg: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --primary: #4f46e5;
+        --success: #16a34a;
+        --warning: #d97706;
+        --danger: #dc2626;
+        --reserved: #0284c7;
+        --neutral: #94a3b8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #020617;
+          --surface: #0f172a;
+          --fg: #f1f5f9;
+          --muted: #94a3b8;
+          --border: #334155;
+          --primary: #818cf8;
+          --success: #4ade80;
+          --warning: #fbbf24;
+          --danger: #f87171;
+          --reserved: #38bdf8;
+          --neutral: #64748b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          Tahoma,
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      a {
+        color: var(--primary);
+      }
+      h1 {
+        font-size: 1.75rem;
+        line-height: 1.25;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 1.35rem;
+        margin: 40px 0 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+      }
+      h3 {
+        font-size: 1.1rem;
+        margin: 24px 0 4px;
+      }
+      p,
+      ul,
+      ol {
+        margin: 8px 0;
+      }
+      li {
+        margin: 4px 0;
+      }
+      .top-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin: 0 0 16px;
+        font-size: 0.95rem;
+      }
+      .lead {
+        color: var(--muted);
+      }
+      nav.toc {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin: 16px 0;
+      }
+      nav.toc ol {
+        padding-inline-start: 20px;
+      }
+      nav.toc ul {
+        padding-inline-start: 18px;
+        font-size: 0.95rem;
+      }
+      .note {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-inline-start: 4px solid var(--primary);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 12px 0;
+      }
+      .note.warn {
+        border-inline-start-color: var(--warning);
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 12px 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        background: var(--surface);
+        font-size: 0.95rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        text-align: start;
+        vertical-align: top;
+      }
+      th {
+        background: var(--bg);
+      }
+      .dot {
+        display: inline-block;
+        width: 0.8em;
+        height: 0.8em;
+        border-radius: 50%;
+        margin-inline-end: 6px;
+        vertical-align: middle;
+      }
+      .free {
+        background: var(--success);
+      }
+      .playing {
+        background: var(--primary);
+      }
+      .soon {
+        background: var(--warning);
+      }
+      .over {
+        background: var(--danger);
+      }
+      .maint {
+        background: var(--neutral);
+      }
+      .reserved {
+        background: var(--reserved);
+      }
+      b.ui {
+        white-space: nowrap;
+      }
+      footer {
+        margin-top: 48px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="top-links">
+        <a href="guide-ar.html" lang="ar" dir="rtl">العربية</a>
+        <a href="privacy.html#en">Privacy policy</a>
+      </div>
+
+      <h1>MyRooms user guide</h1>
+      <p class="lead">
+        MyRooms runs a gaming center: PC desks and PlayStation rooms rented by the hour. This guide
+        is for owners, managers and cashiers. Button and screen names are shown in
+        <b>bold</b>, exactly as the app shows them.
+      </p>
+
+      <nav class="toc" aria-label="Contents">
+        <strong>Contents</strong>
+        <ol>
+          <li>
+            <a href="#start">Getting started</a>
+            <ul>
+              <li><a href="#signup">Create your account</a></li>
+              <li><a href="#setup">Create your organization and quick setup</a></li>
+              <li><a href="#checklist">Setup checklist</a></li>
+              <li><a href="#invite">Invite your staff</a></li>
+              <li><a href="#roles">Roles: who can do what</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#daily">Daily work for staff</a>
+            <ul>
+              <li><a href="#floor">The live floor</a></li>
+              <li><a href="#start-session">Start a session</a></li>
+              <li><a href="#during">During a session</a></li>
+              <li><a href="#checkout">End a session and take payment</a></li>
+              <li><a href="#receipts">Receipts</a></li>
+              <li><a href="#snacks">Snacks and drinks</a></li>
+              <li><a href="#customers">Customers</a></li>
+              <li><a href="#reservations">Reservations and the calendar</a></li>
+              <li><a href="#alerts">Session alerts</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#owners">For owners and managers</a>
+            <ul>
+              <li><a href="#prices">Prices, packages and price preview</a></li>
+              <li><a href="#stations">Stations and maintenance</a></li>
+              <li><a href="#money">Discounts, refunds and voids</a></li>
+              <li><a href="#reports">Reports and export</a></li>
+              <li><a href="#expenses">Expenses</a></li>
+              <li><a href="#stock">Products and stock</a></li>
+              <li><a href="#modules">Optional modules</a></li>
+              <li><a href="#branches">Branches</a></li>
+            </ul>
+          </li>
+          <li><a href="#offline">Working offline</a></li>
+          <li><a href="#updates">Windows app updates</a></li>
+          <li><a href="#delete">Deleting your account</a></li>
+          <li><a href="#faq">Troubleshooting</a></li>
+        </ol>
+      </nav>
+
+      <h2 id="start">1. Getting started</h2>
+
+      <h3 id="signup">Create your account</h3>
+      <ol>
+        <li>Open the app and tap <b>New here? Create an account</b>.</li>
+        <li>Enter your full name, email and a password, then tap <b>Create account</b>.</li>
+        <li>Open the confirmation email and tap the link. Then come back and <b>Sign in</b>.</li>
+      </ol>
+      <p>
+        Staff: sign up with the same email address your manager invited. If you forget your
+        password, tap <b>Forgot your password?</b> on the sign-in screen.
+      </p>
+      <div class="note">
+        The first sign-in on each phone or computer needs internet. After that the app also works
+        offline.
+      </div>
+
+      <h3 id="setup">Create your organization and quick setup</h3>
+      <p>
+        Your organization is your gaming-center business. It can have several branches (locations).
+      </p>
+      <ol>
+        <li>
+          After the first sign-in, under <b>Create your organization</b>, enter the organization
+          name and the name of your first branch. Tap <b>Create organization</b>.
+        </li>
+        <li>
+          <b>Quick setup</b> opens. Enter how many PlayStation rooms and how many PC desks you have,
+          and the hourly price of each.
+        </li>
+        <li>
+          The app creates a station type for each, a base hourly price, and the stations themselves
+          (numbered). You can rename them and add more prices later. You can also skip quick setup
+          and add everything yourself in Settings.
+        </li>
+      </ol>
+      <p>
+        Prices are per station per hour (a whole room, not per player) and charged per minute: 30
+        minutes cost half the hourly price.
+      </p>
+
+      <h3 id="checklist">Setup checklist</h3>
+      <p>
+        Owners see a <b>Setup checklist</b> card on the live floor. It links to the things to do
+        before the first customer:
+      </p>
+      <ul>
+        <li><b>Prices</b>: peak hours, weekends, player counts, hour packages.</li>
+        <li><b>Stations</b>: names, extra stations, maintenance.</li>
+        <li><b>Staff</b>: invite your managers and cashiers.</li>
+        <li><b>Modules</b>: switch Customers, Snacks and Expenses on or off.</li>
+      </ul>
+      <p>When you are done, you can hide the card.</p>
+
+      <h3 id="invite">Invite your staff</h3>
+      <ol>
+        <li>Go to <b>Settings</b> › <b>Staff</b> and tap <b>Invite</b>.</li>
+        <li>Enter their email, choose a <b>Role</b> and their <b>Branches</b>.</li>
+        <li>Tap <b>Send invitation</b>. This needs internet.</li>
+      </ol>
+      <p>
+        The person gets an email. They create an account with that email (or sign in if they already
+        have one), and tap <b>Join</b> under <b>Invitations for you</b>. A manager or cashier with
+        no branch can't work anywhere: assign at least one branch.
+      </p>
+
+      <h3 id="roles">Roles: who can do what</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Owner</th>
+              <th>Manager</th>
+              <th>Cashier</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Start, extend and end sessions; reservations; take payments</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>Sell snacks and drinks; add customers</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>Cancel a running session</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Discounts, refunds, void bills</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Customer default discount</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Stations and maintenance</td>
+              <td>Yes</td>
+              <td>Their branches</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Station types, prices, packages, product list</td>
+              <td>Yes</td>
+              <td>View only</td>
+              <td>View only</td>
+            </tr>
+            <tr>
+              <td>Restock and count stock; expenses</td>
+              <td>Yes</td>
+              <td>Their branches</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Reports and income</td>
+              <td>All branches</td>
+              <td>Their branches</td>
+              <td>Only <b>My shift</b> (own payments today)</td>
+            </tr>
+            <tr>
+              <td>Invite staff</td>
+              <td>Any role</td>
+              <td>Cashiers for their branches</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Branches, organization settings, modules, roles</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>An organization always keeps at least one owner.</p>
+
+      <h2 id="daily">2. Daily work for staff</h2>
+
+      <h3 id="floor">The live floor</h3>
+      <p>
+        The home screen, <b>Live floor</b>, shows every station in the current branch. Each card
+        shows the timer, players and running cost. The colour tells you the status:
+      </p>
+      <ul>
+        <li><span class="dot free"></span><b>Free</b> (green): tap to start a session.</li>
+        <li>
+          <span class="dot playing"></span><b>Playing</b> (blue-violet): a session is running.
+        </li>
+        <li>
+          <span class="dot soon"></span><b>Ending soon</b> (orange): 5 minutes or less left on a
+          fixed-time session.
+        </li>
+        <li><span class="dot over"></span><b>Over time</b> (red): the planned time has passed.</li>
+        <li>
+          <span class="dot reserved"></span><b>Reserved soon</b> (light blue): a reservation starts
+          within 30 minutes. Tap to check the customer in.
+        </li>
+        <li>
+          <span class="dot maint"></span><b>Maintenance</b> (grey): out of service, can't be started
+          or booked.
+        </li>
+      </ul>
+      <p>
+        The header has the branch name (tap it to switch branch if you work in several), the sync
+        badge, <b>Calendar</b>, <b>Reports</b> (cashiers: <b>My shift</b>) and <b>Settings</b>. The
+        floor also lists <b>Arrivals</b> (reservations due soon or late) and
+        <b>Waiting for payment</b> (ended sessions not fully paid).
+      </p>
+
+      <h3 id="start-session">Start a session</h3>
+      <ol>
+        <li>Tap a <b>Free</b> station.</li>
+        <li>
+          Choose <b>Open</b> (the timer runs until you end it) or <b>Fixed time</b> (choose
+          <b>How long</b>: a quick duration, <b>Other</b> for minutes, or a package).
+        </li>
+        <li>Set the number of players.</li>
+        <li>
+          Optional: choose a <b>Customer</b> and add a note. The screen shows the current rate or
+          the estimated price.
+        </li>
+        <li>Tap <b>Start session</b>.</li>
+      </ol>
+      <p>
+        If a reservation is coming on that station, the app warns you so a walk-in doesn't block it.
+      </p>
+
+      <h3 id="during">During a session</h3>
+      <p>Tap a running station to open its session. From there:</p>
+      <ul>
+        <li><b>Add time</b>: adds to the planned end of a fixed-time session.</li>
+        <li>
+          Change players: use the player buttons, then <b>Change to … players</b>. The new count is
+          priced from now on.
+        </li>
+        <li>
+          <b>Move to another station</b>: pick a free station. A session with a package can only
+          move to a station of the same type.
+        </li>
+        <li><b>Snacks &amp; drinks</b>: add items (see below).</li>
+      </ul>
+      <p>The screen shows the <b>Bill so far (estimate)</b> and the history of changes.</p>
+
+      <h3 id="checkout">End a session and take payment</h3>
+      <ol>
+        <li>On the session, tap <b>End session</b>, then <b>End now</b>.</li>
+        <li>
+          <b>Checkout</b> opens with the bill: time, snacks, discount, <b>Total</b>, <b>Paid</b> and
+          <b>Still to pay</b>.
+        </li>
+        <li>
+          Under <b>Take payment</b>, choose <b>Cash</b>, <b>Visa</b> or <b>Instapay</b>. The amount
+          is filled in with what is due.
+        </li>
+        <li>
+          For cash, you can enter <b>Cash received (optional)</b> to see the change. For Visa or
+          Instapay, you can enter the slip or transfer number as <b>Reference (optional)</b>.
+        </li>
+        <li>Tap the record button (<b>Record … by …</b>).</li>
+      </ol>
+      <p>
+        <b>Split payment:</b> enter less than the full amount, record it, then record the rest with
+        another method. The app doesn't charge cards or send Instapay requests: it only records how
+        the customer paid.
+      </p>
+      <p>
+        Payments are never edited or deleted. If a payment was wrong, an owner or manager makes a
+        <b>Refund</b> and you record it again correctly.
+      </p>
+      <p>
+        If you leave checkout before the customer pays, the session stays in
+        <b>Waiting for payment</b> on the floor.
+      </p>
+
+      <h3 id="receipts">Receipts</h3>
+      <p>
+        On checkout, tap <b>Print or share receipt</b>. On a phone you get a PDF to share (for
+        example on WhatsApp). On a computer the print window opens; choose a printer or
+        <b>Save as PDF</b>. The receipt number appears after the device syncs.
+      </p>
+
+      <h3 id="snacks">Snacks and drinks</h3>
+      <p>
+        When the Snacks module is on, the session and checkout screens have a
+        <b>Snacks &amp; drinks</b> card. Pick a product, set the quantity, tap <b>Add</b>. Items
+        appear on the bill. To remove one, tap <b>Remove</b>; it goes back into stock. After the
+        session ends, only owners and managers can remove items, and only before any payment.
+      </p>
+      <p>
+        If the stock says a product is out, you can still sell it; the owner or manager corrects the
+        count later.
+      </p>
+
+      <h3 id="customers">Customers</h3>
+      <p>
+        When the Customers module is on, you can link a customer when starting a session, booking,
+        or on the session screen. Search by phone or name. If nobody matches, tap
+        <b>Add as a new customer</b>. If the phone number already belongs to someone, the app tells
+        you and lets you choose that customer instead.
+      </p>
+      <p>
+        The <b>Customers</b> screen (link on the floor) shows each customer's visits and total paid.
+        A customer can have a <b>Default discount (%)</b>, set by an owner or manager; it is taken
+        off the bill automatically when the session ends.
+      </p>
+
+      <h3 id="reservations">Reservations and the calendar</h3>
+      <p>Tap <b>Calendar</b> on the floor. Stations are rows, time runs along the day.</p>
+      <ul>
+        <li>
+          <b>Book:</b> tap an empty time. Fill in the station, date, start time, length, players,
+          customer name and phone (optional), then tap <b>Book</b>. You can also tap
+          <b>New reservation</b>.
+        </li>
+        <li>
+          <b>Move or resize:</b> tap a reservation to select it, then drag it to another time or
+          station, or drag its end to change the length. Tap it again to open it.
+        </li>
+        <li>
+          <b>Day</b> and <b>Week</b> views: week view is on larger screens (tablet, computer).
+        </li>
+        <li>
+          <b>Check in:</b> when the customer arrives, tap the station on the floor (or the
+          reservation in <b>Arrivals</b>) and tap <b>Check in now</b>. The timer starts and the
+          session ends at the booked time; you can add time later. If the booked station is busy,
+          use <b>Check in on another station</b>.
+        </li>
+        <li><b>No-show:</b> 15 minutes after the start time you can tap <b>Mark as no-show</b>.</li>
+        <li><b>Cancel:</b> open the reservation and tap <b>Cancel reservation</b>.</li>
+      </ul>
+      <p>
+        The app never lets two reservations take the same station at the same time. If two offline
+        devices book the same slot, the server keeps the first and the other device shows it under
+        <b>Not saved</b> (see <a href="#offline">Working offline</a>).
+      </p>
+
+      <h3 id="alerts">Session alerts</h3>
+      <p>
+        For fixed-time sessions the app alerts you 5 minutes before the end, at the end, and 15
+        minutes over. Allow notifications when asked. On a computer (web or Windows app) the app
+        must be open. Each device can turn alerts off in <b>Settings</b> › <b>Account</b> ›
+        <b>Session alerts</b>.
+      </p>
+
+      <h2 id="owners">3. For owners and managers</h2>
+
+      <h3 id="prices">Prices, packages and price preview</h3>
+      <p>Owners set prices in <b>Settings</b> › <b>Station types &amp; prices</b>.</p>
+      <ul>
+        <li>
+          <b>Station type:</b> a group of stations with the same price, e.g. "PS5 Room" or "VIP PC",
+          with a maximum number of players.
+        </li>
+        <li>
+          <b>Hourly prices:</b> start with a base price for all days and times. Tap
+          <b>Add price</b> for peak hours, weekends or player counts (e.g. 4 players). When several
+          prices match, the highest <b>Priority</b> wins (base 0, peak or weekend 10).
+        </li>
+        <li>
+          <b>Hour packages:</b> a fixed price for a number of hours, e.g. 3 hours for 150 EGP. Time
+          after the package is charged at the hourly price.
+        </li>
+        <li>
+          <b>Price preview</b> (in Settings): pick a type, players, start and end, and see the price
+          line by line. Use it to check your prices.
+        </li>
+      </ul>
+      <p>Bills already made keep their amounts when you change prices.</p>
+
+      <h3 id="stations">Stations and maintenance</h3>
+      <p>
+        In <b>Settings</b> › <b>Stations</b> (current branch), tap <b>Add stations</b> to add
+        several at once; they are numbered after the name. Turn on <b>Maintenance</b> when a station
+        is out of service: it can't be started or booked. Turn off <b>In use</b> to remove a station
+        from the floor; its history is kept.
+      </p>
+
+      <h3 id="money">Discounts, refunds and voids</h3>
+      <ul>
+        <li>
+          <b>Discount:</b> on checkout, <b>Give a discount</b> as an amount or a percent, with an
+          optional reason. Only before any payment is taken.
+        </li>
+        <li>
+          <b>Refund:</b> tap <b>Refund</b>, enter the amount, method and a reason (required). You
+          can't refund more than was paid.
+        </li>
+        <li>
+          <b>Void bill:</b> for a bill that should not count at all. A reason is required and it
+          can't be undone. Refund any money taken first.
+        </li>
+      </ul>
+      <p>Every discount, refund and void is recorded with the name of who did it.</p>
+
+      <h3 id="reports">Reports and export</h3>
+      <p>Tap <b>Reports</b> on the floor. Choose a period and a branch:</p>
+      <ul>
+        <li>
+          <b>Today</b>, <b>This week</b> (weeks start on Saturday), <b>This month</b> or
+          <b>Custom</b>.
+        </li>
+        <li>
+          <b>Overview</b>: income (payments minus refunds) by payment method, branch, station type
+          and day, compared with the previous period. With Expenses on: <b>Net profit</b>.
+        </li>
+        <li><b>Usage</b>: how much station time was used, and <b>Busiest hours</b>.</li>
+        <li><b>Customers</b>: top customers. <b>Snacks &amp; drinks</b>: what sold.</li>
+        <li><b>Export CSV</b> (opens in Excel) or <b>Export PDF</b>.</li>
+      </ul>
+      <p>
+        Income counts on the day the money changed hands. Void bills don't count. Payments taken
+        offline on other devices appear once they sync.
+      </p>
+      <p>
+        Cashiers see <b>My shift</b>: only the money they took today. Check the Cash line against
+        the drawer.
+      </p>
+
+      <h3 id="expenses">Expenses</h3>
+      <p>
+        Tap <b>Expenses</b> on the floor, then <b>Add expense</b>: category, amount, how it was
+        paid, date and a note. Expenses are per branch. Cashiers don't see them.
+      </p>
+
+      <h3 id="stock">Products and stock</h3>
+      <p>
+        Tap <b>Snacks &amp; stock</b> on the floor. Owners add products (<b>Add product</b>) with a
+        price and can turn on <b>Count stock</b> with a low-stock warning. Products are never
+        deleted; use <b>Stop selling</b>. Owners and managers use <b>Restock</b> when goods arrive
+        and <b>Count</b> to correct the stock after counting the shelf.
+      </p>
+      <p>Stock in a branch = restocks and corrections minus everything sold in that branch.</p>
+
+      <h3 id="modules">Optional modules</h3>
+      <p>
+        In <b>Settings</b> › <b>Organization</b> › <b>Optional modules</b>, the owner switches
+        <b>Customers</b>, <b>Snacks &amp; drinks (with stock)</b> and <b>Expenses</b> on or off.
+        Turning a module off hides it everywhere. Its data is kept, and snacks already on a bill
+        still show.
+      </p>
+
+      <h3 id="branches">Branches</h3>
+      <p>
+        Owners add locations in <b>Settings</b> › <b>Branches</b> › <b>Add branch</b>. Branches are
+        never deleted, only closed (turn off <b>Open</b>); their history is kept. Each device works
+        in one branch at a time: switch it from the branch name at the top of the floor.
+      </p>
+
+      <h2 id="offline">4. Working offline</h2>
+      <p>
+        If the internet drops, keep working. Sessions, payments, reservations, snacks, customers,
+        expenses and reports all work on the device. Changes are saved on the device and upload when
+        the internet is back.
+      </p>
+      <p>
+        <b>Needs internet:</b> the first sign-in on a device, creating an organization, inviting
+        staff, joining an invitation, and deleting your account.
+      </p>
+      <p>The sync badge on the floor shows the state. Tap it to open the <b>Sync</b> page.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Badge</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Up to date</b></td>
+              <td>Everything on this device is saved on the server.</td>
+            </tr>
+            <tr>
+              <td><b>Syncing…</b> / <b>Connecting…</b></td>
+              <td>Sending and receiving changes, or trying to reach the server.</td>
+            </tr>
+            <tr>
+              <td><b>Offline</b></td>
+              <td>No connection. Keep working; changes upload later.</td>
+            </tr>
+            <tr>
+              <td><b>Not uploading</b></td>
+              <td>
+                The server is reachable but isn't taking the changes yet. Nothing is lost; they are
+                retried.
+              </td>
+            </tr>
+            <tr>
+              <td><b>Sync problem</b></td>
+              <td>
+                This device can't receive updates. Tap <b>Sync now</b>; if it continues, tell the
+                owner.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        On the Sync page, <b>Sync now</b> retries at once. The page also shows the last sync, the
+        changes waiting to upload and the device clock.
+      </p>
+
+      <h3>The "Not saved" list</h3>
+      <p>
+        Sometimes the server refuses a change made offline, usually because another device got there
+        first (for example, two devices booked the same station). The change then appears on the
+        floor under <b>Not saved</b>, with the reason. Nothing disappears silently.
+      </p>
+      <ul>
+        <li>For a reservation, tap <b>Book again</b> to book it at another time or station.</li>
+        <li>
+          For a payment or refund, the amount and method are shown: record it again on the right
+          bill.
+        </li>
+        <li>When you have dealt with an entry, tap <b>Dismiss</b>.</li>
+      </ul>
+
+      <div class="note warn">
+        <b>While changes are waiting to upload:</b> don't sign out and don't clear the browser data,
+        or they are lost. On computers, use the Windows app or install the web app so the browser
+        keeps the data.
+      </div>
+      <p>
+        <b>Keep the device clock right.</b> Sessions, payments and bills use the device's clock.
+        Turn on automatic date and time. The Sync page warns you if the clock is more than 2 minutes
+        off.
+      </p>
+
+      <h2 id="updates">5. Windows app updates</h2>
+      <p>
+        The Windows app updates itself. When a new version is ready, it shows
+        <b>Version … is available</b>. Tap <b>Install and restart</b>. It is best to do this when
+        the sync badge says <b>Up to date</b> and no session is being checked out. Phones update
+        through Google Play or the App Store; the web app updates when you reload the page.
+      </p>
+
+      <h2 id="delete">6. Deleting your account</h2>
+      <p>
+        Go to <b>Settings</b> › <b>Account</b> › <b>Delete my account</b>. This needs internet and
+        can't be undone. The app explains what will be deleted. Type the word it asks for, then
+        confirm.
+      </p>
+      <ul>
+        <li>Your sign-in is deleted, and your name and email are removed from the organization.</li>
+        <li>
+          Bills, payments and other business records you made stay with the organization, but no
+          longer show your name or email.
+        </li>
+        <li>
+          If you are the only owner and the organization has other staff, first make someone else
+          owner (<b>Settings</b> › <b>Staff</b> › choose the person › <b>Role</b>).
+        </li>
+        <li>
+          If you are the only member of the organization, the organization and all its data
+          (stations, sessions, bills, payments, customers…) are deleted too. Export your reports
+          first if you want a copy.
+        </li>
+      </ul>
+      <p>
+        Before deleting, wait until the sync badge says <b>Up to date</b>. You can also delete your
+        account from the web app. See the <a href="privacy.html#en">privacy policy</a>.
+      </p>
+
+      <h2 id="faq">7. Troubleshooting</h2>
+
+      <h3>I didn't get the confirmation or invitation email.</h3>
+      <p>
+        Check the spam folder and wait a few minutes. Make sure you used the exact email address
+        that was invited. Still nothing: ask the owner to withdraw and send the invitation again.
+      </p>
+
+      <h3>A station can't be started.</h3>
+      <p>
+        It may be in <b>Maintenance</b>, someone may already be playing on it (check from another
+        device after sync), or no price is set for this time. Ask the owner to add a base price in
+        <b>Station types &amp; prices</b>.
+      </p>
+
+      <h3>I can't give a discount.</h3>
+      <p>
+        Only owners and managers can, and only before any payment. If money was already taken,
+        refund it first, then give the discount.
+      </p>
+
+      <h3>I recorded the wrong payment method or amount.</h3>
+      <p>
+        Payments can't be edited. An owner or manager makes a <b>Refund</b> with a reason, then you
+        record the payment again correctly.
+      </p>
+
+      <h3>Alerts don't appear.</h3>
+      <p>
+        Allow notifications for the app in the phone or browser settings, and check
+        <b>Settings</b> › <b>Account</b> › <b>Session alerts</b>. On a computer the app must be
+        open. Station cards still change colour when time runs out.
+      </p>
+
+      <h3>The badge says "Not uploading" for a long time.</h3>
+      <p>
+        Nothing is lost: the changes stay on the device and are retried. Don't sign out. Open the
+        <b>Sync</b> page and tap <b>Sync now</b>. If it continues, contact the owner or support.
+      </p>
+
+      <h3>A reservation or payment I made disappeared.</h3>
+      <p>
+        Look at the <b>Not saved</b> list on the floor. It shows what the server refused and why.
+        Book again or record the payment again.
+      </p>
+
+      <h3>A staff member can't see a branch or the stations.</h3>
+      <p>
+        Check <b>Settings</b> › <b>Staff</b>: they need at least one branch. Then they switch to
+        that branch at the top of the floor.
+      </p>
+
+      <h3>Times or amounts look wrong.</h3>
+      <p>
+        Check the device clock (Sync page). Check the time zone in <b>Settings</b> ›
+        <b>Organization</b> (for example Africa/Cairo). Bill amounts on the device are estimates
+        until the server confirms them after sync.
+      </p>
+
+      <footer>
+        <p>
+          <a href="guide-ar.html" lang="ar" dir="rtl">الدليل بالعربية</a> ·
+          <a href="privacy.html#en">Privacy policy</a>
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

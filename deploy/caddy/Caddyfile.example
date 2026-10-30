@@ -4,6 +4,14 @@
 
 # Web app (static files from `npm run build:web`, copied to /var/www/myrooms).
 app.example.com {
+	# Windows app updates (step 9): installers, .sig files and latest.json, kept outside the
+	# web app folder so publishing the web app (rsync --delete) doesn't remove them.
+	handle_path /desktop/* {
+		root * /var/www/myrooms-desktop
+		header /latest.json Cache-Control "no-cache"
+		file_server
+	}
+
 	root * /var/www/myrooms
 	encode zstd gzip
 	# Single-page app: unknown paths fall back to index.html.
@@ -13,6 +21,8 @@ app.example.com {
 	@hashed path /_expo/static/* /@powersync/*
 	header @hashed Cache-Control "public, max-age=31536000, immutable"
 	header /index.html Cache-Control "no-cache"
+	# The user guide and privacy policy (public/*.html) change with releases.
+	header /*.html Cache-Control "no-cache"
 }
 
 # Supabase API gateway (REST, Auth, Storage, Realtime) + Studio dashboard.

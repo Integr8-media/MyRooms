@@ -10,7 +10,8 @@
     "working": "Please wait…",
     "cancel": "Cancel",
     "off": "Off",
-    "done": "Done"
+    "done": "Done",
+    "listSeparator": ", "
   },
   "auth": {
     "notConfigured": "The server is not configured, so you can't sign in yet. See README to connect Supabase and PowerSync.",
@@ -56,7 +57,8 @@
     "minAboveMax": "Must be at least the minimum.",
     "endBeforeStart": "The end must be after the start.",
     "sameTimes": "Start and end can't be the same. Turn on \"All day\" instead.",
-    "chooseDays": "Choose at least one day."
+    "chooseDays": "Choose at least one day.",
+    "addStations": "Add at least one room or desk."
   },
   "errors": {
     "not_authenticated": "Please sign in again.",
@@ -291,7 +293,17 @@
     "signedInAs": "Signed in as {{email}}",
     "changePassword": "Change password",
     "unsyncedWarning": "{{count}} change(s) on this device haven't been uploaded yet and will be lost if you sign out now. Connect to the internet and wait for sync, or sign out anyway.",
-    "signOutAnyway": "Sign out anyway"
+    "signOutAnyway": "Sign out anyway",
+    "deleteTitle": "Delete my account",
+    "deleteIntro": "Permanently delete your sign-in and remove your name and email from your organizations.",
+    "deleteWarning": "This can't be undone, and it needs an internet connection. You will be signed out on this device.",
+    "deleteBlocked": "You are the only owner of {{orgs}}. Make someone else owner in Settings → Staff (or remove the other staff) before deleting your account.",
+    "deleteOrgs": "You are the only member of {{orgs}}. It will be deleted with all its data: stations, prices, sessions, bills, payments, customers, stock and expenses.",
+    "deleteLeaves": "You will be removed from {{orgs}}. Its sessions and payments stay with the organization.",
+    "deletePending": "{{count}} change(s) on this device haven't been uploaded yet and will be lost.",
+    "deleteType": "Type {{word}} to confirm",
+    "deleteWord": "DELETE",
+    "deleteForever": "Delete my account permanently"
   },
   "stationTypes": {
     "title": "Station types & prices",
@@ -911,5 +923,55 @@
     "body": "This screen stopped working. Your data is safe on this device.",
     "reported": "The problem was reported.",
     "retry": "Try again"
+  },
+  "setup": {
+    "title": "Quick setup",
+    "intro": "Tell us what {{branch}} has. We'll create the station types, a base hourly price for each and the stations. You can add peak-hour prices, player-count prices and packages later in Settings.",
+    "ownerOnly": "Only owners can set up stations and prices.",
+    "psTitle": "PlayStation rooms",
+    "psCount": "How many rooms?",
+    "pcTitle": "PC desks",
+    "pcCount": "How many desks?",
+    "fewer": "Fewer",
+    "more": "More",
+    "pricePerHour": "Price per hour (EGP)",
+    "psTypeName": "PlayStation room",
+    "psPrefix": "Room",
+    "pcTypeName": "PC",
+    "pcPrefix": "PC",
+    "previewTitle": "This will create",
+    "previewLine": "{{type}}: {{count}} ({{first}} – {{last}}) at {{price}} per hour",
+    "laterHint": "Everything can be renamed and changed later.",
+    "create": "Create stations and prices",
+    "skip": "Skip for now",
+    "checklistTitle": "Setup checklist",
+    "checklistIntro": "{{count}} step(s) left before your staff can start.",
+    "step": {
+      "prices": "Station types and prices",
+      "stations": "Stations",
+      "staff": "Invite your staff",
+      "modules": "Choose modules"
+    },
+    "stepHint": {
+      "prices": "Add at least one type with an hourly price.",
+      "stations": "Add the rooms and desks of this branch.",
+      "staff": "Managers and cashiers sign in with their own accounts.",
+      "modules": "Customers, snacks and expenses can be switched off in Organization."
+    },
+    "hide": "Hide this"
+  },
+  "help": {
+    "title": "Help",
+    "guide": "User guide",
+    "guideHint": "How to run the floor, take payments and read reports.",
+    "privacy": "Privacy policy",
+    "version": "MyRooms version {{version}}"
+  },
+  "updates": {
+    "available": "Version {{version}} is available",
+    "hint": "Install it when no one is checking out: the app restarts in a few seconds. Running sessions keep running.",
+    "install": "Install and restart",
+    "downloading": "Downloading…",
+    "downloadingPercent": "Downloading… {{percent}}%"
   }
 }

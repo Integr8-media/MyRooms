@@ -1,3 +1,5 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
+
 import { powersync } from '@/lib/powersync/database';
 import { useWorkspaceStore } from '@/lib/settings/workspace-store';
 import { getSupabase } from '@/lib/supabase/client';
@@ -48,12 +50,37 @@ export async function updateDisplayName(fullName: string) {
  * should warn first (see usePendingUploads).
  */
 export async function signOut() {
-  // Scheduled session alerts belong to this account's branch.
-  await scheduleAlerts([]).catch(() => {});
-  await powersync.disconnectAndClear();
-  useWorkspaceStore.getState().reset();
+  await clearDevice();
   const supabase = getSupabase();
   const { error } = await supabase.auth.signOut();
   // Offline: the server call fails, so at least forget the session on this device.
   if (error) await supabase.auth.signOut({ scope: 'local' });
+}
+
+/** Forgets this account on the device: alerts, the local database and the chosen org/branch. */
+async function clearDevice() {
+  // Scheduled session alerts belong to this account's branch.
+  await scheduleAlerts([]).catch(() => {});
+  await powersync.disconnectAndClear();
+  useWorkspaceStore.getState().reset();
+}
+
+/**
+ * Deletes the signed-in account (online only) through the `delete-account` Edge Function,
+ * then clears this device. Organizations where the person is the only member are deleted
+ * too; the server refuses with `last_owner` if they are the only owner of one with staff.
+ */
+export async function deleteAccount() {
+  const supabase = getSupabase();
+  const { error } = await supabase.functions.invoke('delete-account', { body: { confirm: true } });
+  if (error) {
+    if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+      const body = (await error.context.json().catch(() => null)) as { error?: string } | null;
+      throw { message: body?.error ?? 'unknown' };
+    }
+    throw { message: 'network' };
+  }
+  await clearDevice();
+  // The account no longer exists on the server: only the local session is left to forget.
+  await supabase.auth.signOut({ scope: 'local' });
 }

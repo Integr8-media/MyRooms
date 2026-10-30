@@ -8,13 +8,19 @@
     "scheme": "myrooms",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.integr8media.myrooms",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0F766E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -25,11 +31,20 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "MyRooms",
+      "shortName": "MyRooms",
+      "themeColor": "#0F766E",
+      "backgroundColor": "#0B1220"
     },
     "plugins": [
       "expo-router",
-      "expo-localization",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -39,9 +54,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0F766E",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120
         }
       ],
       "@sentry/react-native"
@@ -49,6 +64,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "description": "Gaming center management: live floor, sessions, reservations, billing and income reports.",
+    "locales": {
+      "en": "./assets/locales/en.json",
+      "ar": "./assets/locales/ar.json"
     }
   }
 }

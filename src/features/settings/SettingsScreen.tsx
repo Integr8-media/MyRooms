@@ -1,12 +1,14 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { useWorkspace } from '@/features/workspace/WorkspaceProvider';
+import { canOpenHelp, openHelp } from '@/lib/help/open';
 import { useWorkspaceStore } from '@/lib/settings/workspace-store';
 import { Card, ListRow, Screen, ScreenHeader, SegmentedControl, Text } from '@/ui';
 
 export function SettingsScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { can, memberships, membership } = useWorkspace();
   const setOrg = useWorkspaceStore((s) => s.setOrg);
 
@@ -74,6 +76,28 @@ export function SettingsScreen() {
           onPress={() => router.push('/settings/account')}
           testID="settings-account"
         />
+      </Card>
+
+      <Card className="gap-1">
+        <Text variant="heading">{t('help.title')}</Text>
+        {canOpenHelp() ? (
+          <>
+            <ListRow
+              title={t('help.guide')}
+              subtitle={t('help.guideHint')}
+              onPress={() => void openHelp('guide', i18n.language)}
+              testID="settings-guide"
+            />
+            <ListRow
+              title={t('help.privacy')}
+              onPress={() => void openHelp('privacy', i18n.language)}
+              testID="settings-privacy"
+            />
+          </>
+        ) : null}
+        <Text variant="muted">
+          {t('help.version', { version: Constants.expoConfig?.version ?? '-' })}
+        </Text>
       </Card>
     </Screen>
   );

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MyRooms privacy policy | سياسة الخصوصية</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --fg: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --primary: #4f46e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #020617;
+          --surface: #0f172a;
+          --fg: #f1f5f9;
+          --muted: #94a3b8;
+          --border: #334155;
+          --primary: #818cf8;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          Tahoma,
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      section[lang='ar'] {
+        font-family: system-ui, 'Segoe UI', Tahoma, sans-serif;
+        font-size: 17px;
+        line-height: 1.8;
+      }
+      a {
+        color: var(--primary);
+      }
+      h1 {
+        font-size: 1.6rem;
+        line-height: 1.3;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 28px 0 6px;
+      }
+      p,
+      ul {
+        margin: 8px 0;
+      }
+      li {
+        margin: 4px 0;
+      }
+      .top-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin: 0 0 16px;
+        font-size: 0.95rem;
+      }
+      .meta {
+        color: var(--muted);
+      }
+      section.policy {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin: 16px 0 32px;
+      }
+      bdi {
+        unicode-bidi: isolate;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="top-links">
+        <a href="#en">English</a>
+        <a href="#ar" lang="ar">العربية</a>
+        <a href="guide.html">User guide</a>
+        <a href="guide-ar.html" lang="ar">دليل الاستخدام</a>
+      </div>
+
+      <section id="en" class="policy" lang="en" dir="ltr">
+        <h1>MyRooms privacy policy</h1>
+        <p class="meta">Effective date: [EFFECTIVE DATE]</p>
+
+        <h2>Who we are</h2>
+        <p>
+          MyRooms is an app for running a gaming center (PC desks and PlayStation rooms rented by
+          the hour). It is operated by [COMPANY NAME] ("we"), the service provider of the
+          gaming-center business that uses it. You can contact us at [SUPPORT EMAIL].
+        </p>
+        <p>
+          The app is used by the staff of a gaming center (owners, managers and cashiers). The
+          gaming-center business decides what records its staff enter. We store and process that
+          data for the business so the app can work.
+        </p>
+
+        <h2>What data the app holds</h2>
+        <ul>
+          <li>
+            <b>Staff accounts:</b> email address, name, role (owner, manager or cashier) and the
+            branches the person works in. Passwords are handled by the sign-in service and stored
+            only as a secure hash; we can't read them.
+          </li>
+          <li>
+            <b>Business records entered by staff:</b> branches, stations, prices and packages,
+            sessions and reservations, bills, payments (amount, method: Cash, Visa or Instapay, and
+            an optional reference number such as a card slip or transfer number), refunds,
+            discounts, expenses, snacks and stock. Each record notes which staff member made it.
+          </li>
+          <li>
+            <b>Customer records (optional):</b> if the gaming center uses the Customers module,
+            staff may enter a customer's name, phone number, notes and default discount.
+            Reservations may also hold a customer name and phone number.
+          </li>
+        </ul>
+        <p>
+          The app does <b>not</b> process card payments. It only records how a customer paid. It
+          never receives card numbers.
+        </p>
+        <p>
+          The app has no ads, no tracking and no analytics tools. We do not sell or rent data, and
+          we do not share it with advertisers or data brokers.
+        </p>
+
+        <h2>Error reports</h2>
+        <p>
+          When error reporting is turned on, the app sends crash and error reports to an error
+          tracker that we host ourselves. A report contains only technical details (what went wrong
+          and where in the app), random ids (for example the account id and branch id), the person's
+          role, the platform and the app version. Names, email addresses, phone numbers and notes
+          are removed on the device before a report is sent. Reports are kept for 30 days.
+        </p>
+
+        <h2>Where data is stored</h2>
+        <ul>
+          <li>
+            Data is stored on the gaming-center business's own server, which we run for them
+            (self-hosted Supabase and PowerSync). It is not stored with an outside cloud database
+            service.
+          </li>
+          <li>All data sent between the app and the server is encrypted in transit (HTTPS).</li>
+          <li>
+            A copy of the business's data is kept on each signed-in phone or computer, so the app
+            keeps working without internet. This copy is erased when the user signs out.
+          </li>
+          <li>The server is backed up every night. Backups are kept for 14 days.</li>
+        </ul>
+
+        <h2>Device permissions</h2>
+        <p>
+          The app asks only for permission to show <b>notifications</b>, to alert staff when a
+          session is about to end. These alerts are created on the device itself; there is no push
+          notification server. The app does not use location, camera, contacts or the microphone.
+        </p>
+
+        <h2>Keeping and deleting data</h2>
+        <ul>
+          <li>Business records are kept for as long as the gaming-center business uses MyRooms.</li>
+          <li>
+            Any staff member can delete their own account in the app: Settings › Account › Delete my
+            account. This is also available in the web app. It needs an internet connection and
+            can't be undone.
+          </li>
+          <li>
+            Deleting an account removes the person's sign-in, and their name and email from the
+            organization. Business records they made (such as bills and payments) stay with the
+            organization, because the business needs them, but they are no longer linked to the
+            person's name or email.
+          </li>
+          <li>
+            If the person is the only member of their organization, the organization and all its
+            data (stations, sessions, bills, payments, customers and everything else) are deleted
+            too. An owner who is the only owner of an organization that still has other staff must
+            first make someone else owner.
+          </li>
+          <li>
+            Customers of a gaming center can ask that gaming center to correct or delete their
+            customer record. Staff can edit or hide a customer record in the app; to remove it
+            completely, the gaming center (or the customer) can ask us at [SUPPORT EMAIL].
+          </li>
+          <li>
+            For any other request about your data, or if you can't use the app, contact [SUPPORT
+            EMAIL].
+          </li>
+        </ul>
+
+        <h2>Children</h2>
+        <p>
+          MyRooms is a tool for gaming-center staff. It is not directed to children under 13, and we
+          do not knowingly collect data from them.
+        </p>
+
+        <h2>Changes to this policy</h2>
+        <p>
+          If we change this policy, we will update it on this page and change the effective date
+          above.
+        </p>
+
+        <h2>Contact</h2>
+        <p>[COMPANY NAME] · [SUPPORT EMAIL]</p>
+      </section>
+
+      <section id="ar" class="policy" lang="ar" dir="rtl">
+        <h1>سياسة الخصوصية لتطبيق ماي رومز</h1>
+        <p class="meta">تاريخ السريان: [EFFECTIVE DATE]</p>
+
+        <h2>من نحن</h2>
+        <p>
+          ماي رومز (MyRooms) تطبيق لإدارة مراكز الألعاب (أجهزة كمبيوتر وغرف بلايستيشن تُؤجَّر
+          بالساعة). تشغّله شركة [COMPANY NAME] ("نحن")، وهي مقدّم الخدمة لمركز الألعاب الذي يستخدم
+          التطبيق. يمكنك التواصل معنا على [SUPPORT EMAIL].
+        </p>
+        <p>
+          يستخدم التطبيق موظفو مركز الألعاب (المالك ومديرو الفروع والكاشير). مركز الألعاب هو من يقرر
+          ما يسجّله موظفوه من بيانات، ونحن نخزّن هذه البيانات ونعالجها لصالحه حتى يعمل التطبيق.
+        </p>
+
+        <h2>البيانات الموجودة في التطبيق</h2>
+        <ul>
+          <li>
+            <b>حسابات الموظفين:</b> البريد الإلكتروني والاسم والدور (مالك أو مدير فرع أو كاشير)
+            والفروع التي يعمل بها. كلمات المرور تتولاها خدمة تسجيل الدخول وتُحفظ بشكل مشفّر لا يمكن
+            قراءته، ولا نستطيع الاطلاع عليها.
+          </li>
+          <li>
+            <b>سجلات العمل التي يدخلها الموظفون:</b> الفروع والمحطات والأسعار والباقات، والجلسات
+            والحجوزات، والفواتير، والمدفوعات (المبلغ وطريقة الدفع: نقداً أو فيزا أو إنستاباي، ورقم
+            مرجعي اختياري مثل رقم إيصال الكارت أو التحويل)، والاستردادات، والخصومات، والمصروفات،
+            والمشروبات والمخزون. وكل سجل يوضح الموظف الذي قام به.
+          </li>
+          <li>
+            <b>بيانات العملاء (اختيارية):</b> إذا كان مركز الألعاب يستخدم وحدة العملاء، يمكن
+            للموظفين تسجيل اسم العميل ورقم هاتفه وملاحظات وخصمه الافتراضي. وقد يحتوي الحجز أيضاً على
+            اسم العميل ورقم هاتفه.
+          </li>
+        </ul>
+        <p>
+          التطبيق <b>لا</b> ينفّذ عمليات الدفع بالكارت، هو فقط يسجّل طريقة دفع العميل، ولا يستلم
+          أرقام البطاقات أبداً.
+        </p>
+        <p>
+          لا توجد في التطبيق إعلانات ولا تتبّع ولا أدوات تحليلات. لا نبيع البيانات ولا نؤجرها، ولا
+          نشاركها مع المعلنين أو تجّار البيانات.
+        </p>
+
+        <h2>تقارير الأخطاء</h2>
+        <p>
+          عند تفعيل تقارير الأخطاء، يرسل التطبيق تقارير الأعطال والأخطاء إلى نظام لتتبّع الأخطاء
+          نستضيفه بأنفسنا. يحتوي التقرير على تفاصيل تقنية فقط (ما الخطأ وأين حدث في التطبيق)،
+          ومعرّفات عشوائية (مثل معرّف الحساب ومعرّف الفرع)، ودور المستخدم، ونوع المنصة، وإصدار
+          التطبيق. تُحذف الأسماء وعناوين البريد الإلكتروني وأرقام الهواتف والملاحظات على الجهاز نفسه
+          قبل إرسال التقرير. وتُحفظ التقارير 30 يوماً.
+        </p>
+
+        <h2>أين تُحفظ البيانات</h2>
+        <ul>
+          <li>
+            تُحفظ البيانات على خادم خاص بمركز الألعاب نديره نحن له (Supabase و PowerSync مستضافان
+            ذاتياً)، وليس لدى خدمة قواعد بيانات سحابية خارجية.
+          </li>
+          <li>كل البيانات المتبادلة بين التطبيق والخادم مشفّرة أثناء النقل (HTTPS).</li>
+          <li>
+            تُحفظ نسخة من بيانات مركز الألعاب على كل موبايل أو كمبيوتر مسجّل الدخول، حتى يعمل
+            التطبيق بدون إنترنت. وتُمسح هذه النسخة عند تسجيل الخروج.
+          </li>
+          <li>تُؤخذ نسخة احتياطية من الخادم كل ليلة، وتُحفظ النسخ الاحتياطية 14 يوماً.</li>
+        </ul>
+
+        <h2>أذونات الجهاز</h2>
+        <p>
+          يطلب التطبيق إذناً واحداً فقط هو <b>الإشعارات</b>، لتنبيه الموظفين عند قرب انتهاء الجلسة.
+          هذه التنبيهات يُنشئها الجهاز نفسه، ولا يوجد خادم لإرسال الإشعارات. لا يستخدم التطبيق
+          الموقع ولا الكاميرا ولا جهات الاتصال ولا الميكروفون.
+        </p>
+
+        <h2>الاحتفاظ بالبيانات وحذفها</h2>
+        <ul>
+          <li>تُحفظ سجلات العمل طوال فترة استخدام مركز الألعاب لتطبيق ماي رومز.</li>
+          <li>
+            يمكن لأي موظف حذف حسابه من داخل التطبيق: الإعدادات ‹ الحساب ‹ حذف حسابي. ويتوفر ذلك
+            أيضاً في تطبيق الويب. العملية تحتاج اتصالاً بالإنترنت ولا يمكن التراجع عنها.
+          </li>
+          <li>
+            حذف الحساب يزيل حساب الدخول، ويزيل اسم الشخص وبريده الإلكتروني من المؤسسة. أما سجلات
+            العمل التي سجّلها (مثل الفواتير والمدفوعات) فتبقى للمؤسسة لأنها تحتاجها، لكنها لا تعود
+            مرتبطة باسمه أو بريده.
+          </li>
+          <li>
+            إذا كان الشخص هو العضو الوحيد في مؤسسته، تُحذف المؤسسة وكل بياناتها أيضاً (المحطات
+            والجلسات والفواتير والمدفوعات والعملاء وغيرها). والمالك الوحيد لمؤسسة فيها موظفون آخرون
+            يجب أن يجعل شخصاً آخر مالكاً أولاً.
+          </li>
+          <li>
+            يمكن لعملاء مركز الألعاب أن يطلبوا من المركز تصحيح بياناتهم أو حذفها. ويستطيع الموظفون
+            تعديل بيانات العميل أو إخفاءها من التطبيق، ولحذفها نهائياً يمكن للمركز (أو للعميل)
+            مراسلتنا على [SUPPORT EMAIL].
+          </li>
+          <li>
+            لأي طلب آخر بخصوص بياناتك، أو إذا تعذّر عليك استخدام التطبيق، راسلنا على [SUPPORT
+            EMAIL].
+          </li>
+        </ul>
+
+        <h2>الأطفال</h2>
+        <p>
+          ماي رومز أداة لموظفي مراكز الألعاب، وليس موجهاً للأطفال دون 13 عاماً، ولا نجمع بياناتهم عن
+          علم.
+        </p>
+
+        <h2>التغييرات على هذه السياسة</h2>
+        <p>إذا غيّرنا هذه السياسة سنحدّثها في هذه الصفحة ونغيّر تاريخ السريان أعلاه.</p>
+
+        <h2>التواصل</h2>
+        <p>[COMPANY NAME] · <bdi dir="ltr">[SUPPORT EMAIL]</bdi></p>
+      </section>
+    </main>
+  </body>
+</html>

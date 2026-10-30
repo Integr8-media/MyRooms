@@ -352,6 +352,48 @@ export const expenseSchema = z.object({
   note: optionalText(200),
 });
 
+// ---------------------------------------------------------------------------
+// Quick setup for a new organization (Phase 10).
+// ---------------------------------------------------------------------------
+
+/** Most stations of one kind the quick setup makes at once. */
+export const MAX_STARTER_STATIONS = 100;
+
+const starterCount = intField(0, MAX_STARTER_STATIONS);
+
+export const quickSetupSchema = z
+  .object({
+    psCount: starterCount,
+    psPrice: z.string(),
+    psPlayers: intField(1, MAX_PLAYERS),
+    pcCount: starterCount,
+    pcPrice: z.string(),
+  })
+  .transform((v, ctx) => {
+    if (v.psCount === 0 && v.pcCount === 0) {
+      ctx.addIssue({ code: 'custom', message: 'addStations', path: ['psCount'] });
+      return z.NEVER;
+    }
+    // A group's price only matters when it has stations; then it must be above zero.
+    const price = (count: number, text: string, field: 'psPrice' | 'pcPrice') => {
+      if (count === 0) return 0;
+      const parsed = priceField.safeParse(text);
+      if (!parsed.success) {
+        ctx.addIssue({ code: 'custom', message: parsed.error.issues[0]!.message, path: [field] });
+        return null;
+      }
+      if (parsed.data === 0) {
+        ctx.addIssue({ code: 'custom', message: 'outOfRange', path: [field] });
+        return null;
+      }
+      return parsed.data;
+    };
+    const psPrice = price(v.psCount, v.psPrice, 'psPrice');
+    const pcPrice = price(v.pcCount, v.pcPrice, 'pcPrice');
+    if (psPrice === null || pcPrice === null) return z.NEVER;
+    return { ...v, psPrice, pcPrice };
+  });
+
 export type ValidationKey =
   | 'required'
   | 'tooLong'
@@ -366,7 +408,8 @@ export type ValidationKey =
   | 'minAboveMax'
   | 'endBeforeStart'
   | 'sameTimes'
-  | 'chooseDays';
+  | 'chooseDays'
+  | 'addStations';
 
 export type FieldErrors<T> = Partial<Record<keyof T, ValidationKey>>;
 

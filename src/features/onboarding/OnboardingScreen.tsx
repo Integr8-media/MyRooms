@@ -9,6 +9,8 @@ import { useWorkspaceStore } from '@/lib/settings/workspace-store';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { Button, Card, LoadingView, Screen, Text, TextField } from '@/ui';
 
+import { DeleteAccountCard } from '@/features/account/DeleteAccountCard';
+
 import { createOrganization } from './api';
 import { InvitationsList } from './InvitationsList';
 
@@ -75,6 +77,7 @@ export function OnboardingScreen() {
       </Card>
 
       <Button label={t('auth.signOut')} variant="secondary" onPress={() => void signOut()} />
+      <DeleteAccountCard />
     </Screen>
   );
 }
