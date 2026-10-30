@@ -157,6 +157,12 @@ Optional modules (Phase 7) need the new migration (step 5) **and** a PowerSync r
 25. **Count** the cola stock as a manager (enter what is on the shelf): the difference is saved as a correction. When stock is at or below the warning level, the floor shows **Snacks & stock (1 low)** and the product list warns.
 26. **Expenses:** as a manager, open **Expenses** → **Add expense** (Electricity, 2,500 EGP, Instapay, today). It shows under **This month** by category; edit and delete one (Studio → `audit_log` lists each change). The cashier has no Expenses button and syncs no expenses. Then, as the owner, switch **Expenses** off in Settings → Organization: the button disappears everywhere and the data stays in Studio.
 
+Advanced reports (Phase 8) need **no server changes**: no migration, sync stream, setting or Edge Function. Like income, they are worked out on each device from what it has synced. Only the web app (step 8), the Windows installer (step 9) and new phone builds (step 10: `expo-file-system` was added for CSV export) need updating.
+
+27. As the owner, tap **Reports** on the floor (cashiers still see **My shift**). **Overview** shows income with the change against the previous period ("Yesterday", "Last week", "Last month"), **Net profit** (income − expenses, by category) when Expenses is on, and **Compare branches** (profit, income, expenses and usage per branch) with 2+ branches. Check the numbers against Studio → `payments` and `expenses`.
+28. **Usage** shows the share of station time in use (whole day, up to now) per station type and per station, and **Busiest hours** (days × hours, darker = busier). Start a session on a free station and reopen: its station's usage goes up. **Customers** lists who paid the most (sessions linked to a customer); **Snacks & drinks** lists items sold per product. Switch a module off: its tab and its part of the export disappear.
+29. **Export CSV** and **Export PDF**: on web/Windows the CSV downloads and the PDF opens the print dialog (choose "Save as PDF"); on a phone both open the share sheet. Open the CSV in Excel or Google Sheets: Arabic names read correctly and amounts are plain numbers in EGP. As a manager, only their branches appear.
+
 ## 7b. Edge Functions (required for checkout)
 
 Two functions run in Supabase's `functions` container:
@@ -211,7 +217,7 @@ npx eas-cli build --profile development --platform android   # installable test 
 npx eas-cli build --profile development --platform ios       # needs an Apple Developer account
 ```
 
-Phase 3 added `expo-notifications` and Phase 4 added `expo-print` and `expo-sharing` (native code), so phones need a **new development build** after updating. Only local notifications are used: no push keys (FCM/APNs) are needed.
+Phase 3 added `expo-notifications`, Phase 4 added `expo-print` and `expo-sharing`, and Phase 8 added `expo-file-system` (native code), so phones need a **new development build** after updating. Only local notifications are used: no push keys (FCM/APNs) are needed.
 
 Store releases (Google Play, App Store) come in Phase 10.
 

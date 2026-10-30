@@ -136,7 +136,7 @@ export function FloorScreen() {
           testID="open-calendar"
         />
         <Button
-          label={can('income.view') ? t('income.title') : t('income.myShift')}
+          label={can('income.view') ? t('reports.title') : t('income.myShift')}
           variant="secondary"
           onPress={() => router.push('/income')}
           testID="open-income"

@@ -14,9 +14,26 @@ Running log of progress, decisions and open items. Update it at the end of every
 | 5 Income dashboard                      | **Code done, VPS test pending**   | `feature/phase-5-income-dashboard` (not committed)      | No server changes; 170 Jest tests                                           |
 | 6 Calendar and reservations (MVP pilot) | **Code done, VPS test pending**   | `feature/phase-6-calendar-reservations` (not committed) | 256 pgTAP checks pass on PGlite; 207 Jest tests                             |
 | 7 Optional modules                      | **Code done, VPS test pending**   | `feature/phase-7-optional-modules` (not committed)      | 315 pgTAP checks pass on PGlite; 252 Jest tests                             |
-| 8 Advanced reports                      | Not started                       |                                                         |                                                                             |
+| 8 Advanced reports                      | **Code done, VPS test pending**   | `feature/phase-8-advanced-reports` (not committed)      | No server changes; 278 Jest tests                                           |
 | 9 Offline hardening                     | Not started                       |                                                         |                                                                             |
 | 10 Release                              | Not started                       |                                                         |                                                                             |
+
+## Phase 8: what was built (2026-10-30)
+
+- **No server changes** (no migration, sync stream or Edge Function), like Phase 5: every report is worked out on the device from what it already syncs (owners: all branches; managers: their branches).
+- **Domain** `src/domain/reports.ts` (not copied to the server): `previousRange` (yesterday / last week / the whole previous calendar month / the same number of days before a custom range), `percentChange` (null when the previous figure is ≤ 0), `netProfit`, `compareBranches`, `summarizeUtilization` (per station, type, branch and overall; segments of active/completed sessions, merged, running ones up to now; only the elapsed part of the range; 24 h a day; stations added during the range count from `created_at`; removed stations only if used), `occupancyHeatmap` (average busy stations per weekday × local hour; steps one hour from local midnight, DST-safe), `topCustomers` (net payments of sessions with a customer, visits = bills paid towards), `summarizeItemSales` (by `session_items.created_at`; cancelled sessions and void bills excluded). `IncomeEntry` gained optional `billId`/`customerId` (the income query now selects `p.bill_id`, `x.customer_id`).
+- **App:** the floor button for owners/managers is now **Reports** (route still `/income`; cashiers keep **My shift**). `src/features/reports/ReportsScreen.tsx`: same period/custom/branch pickers, tabs **Overview** (income + change vs previous period, Net profit card with expenses by category when Expenses is on, Compare branches with 2+ branches, by method/type/day), **Usage** (overall %, by type, Busiest hours heat map, by station), **Customers** and **Snacks & drinks** (each only when its module is on). `TotalCard`/`AmountBars` moved to `src/features/income/parts.tsx`. `useReport` (one payments query covering both periods).
+- **Export:** `document.ts` turns the model into tables (`ReportDocument`); `export.ts` → CSV (UTF-8 BOM, CRLF, amounts as plain pounds "123.45") or an A4 HTML page (RTL in Arabic). `share.ts` (phones: `expo-file-system` `File(Paths.cache)` + `expo-sharing`; PDF via `expo-print` A4) / `share.web.ts` (Blob download; PDF via the hidden-iframe print dialog). New dependency `expo-file-system` (~58.0.13) → phones need a new dev build.
+
+**Verified:** lint, format, typecheck, 278 Jest tests (16 report domain tests: previous periods incl. leap February, utilization incl. running sessions/merging/new and removed stations, heat map incl. Cairo's DST day, top customers, snack sales, branch comparison; 4 export tests; 6 screen tests: profit + comparison, one branch, usage + heat map, customers + snacks, CSV/PDF content, modules off), web export, Android JS bundle, expo-doctor 20/20.
+**Not verified:** anything signed in (no backend), the screen in Arabic and on a phone (heat map width on a small screen), CSV download inside Tauri (WebView2), the share sheet on phones, performance with a year of data.
+
+### Phase 8 "done when" still open
+
+- [ ] On the VPS: step 7 items 27–29.
+- [ ] Check Reports in Arabic (RTL heat map: hours run right to left) and on a phone-sized screen.
+- [ ] Export CSV from the Windows app (WebView2 download) and from a phone; open in Excel.
+- [ ] Try a 1-year custom range on a phone with real data (speed).
 
 ## Phase 7: what was built (2026-10-30)
 
@@ -167,6 +184,12 @@ Running log of progress, decisions and open items. Update it at the end of every
 
 ## Decisions
 
+- **2026-10-30: Reports stay on the device** (Phase 5 decision kept). If a year of payments/segments gets slow on phones, move heavy reports to server RPCs in Phase 9.
+- **2026-10-30: Utilization counts 24 hours a day** (opening hours aren't set up; `branches.opening_hours` is unused). Ask the client for their hours; then the available time can be limited to them.
+- **2026-10-30: "This month" compares with the whole previous month**, even while this month is still running (likewise this week vs last week). Custom ranges compare with the same number of days just before.
+- **2026-10-30: Snack sales count on the day the item was added**, top customers by money paid in the period (`paid_at`), so the two can differ from bill dates.
+- **2026-10-30: Export = CSV + printable page** (PDF via the share sheet on phones, "Save as PDF" in the print dialog on web/Windows); no PDF library.
+
 - **2026-10-30: Stock is derived, not stored:** restocks/corrections minus items sold, per branch. No trigger writes sale movements. Selling when stock is 0 is allowed (warning only): counts are corrected later.
 - **2026-10-30: The server sets item prices** from the product at upload time (like `create-bill` pricing time): an offline sale made just before a price change is billed at the new price.
 - **2026-10-30: The customer's default discount is applied once, when the bill is made** (`create_bill` and `insertBill`), on time + items at that moment. Items added at checkout afterwards are not discounted; a manager can change the discount before payment. Cashiers can't set a customer's discount.
@@ -275,7 +298,8 @@ Running log of progress, decisions and open items. Update it at the end of every
 8. Run the Phase 5 checks (step 7 items 16–17) once the VPS is up. Ask the client which day their week starts on and whether cashiers should see anything beyond their own day.
 9. Run the Phase 6 checks (step 7 items 18–21), try drag/resize on each platform, then the MVP pilot. Ask the client: the no-show grace period, and whether reservations need a deposit or always a phone number.
 10. Run the Phase 7 checks (step 7 items 22-26) after the migration and a PowerSync restart. Ask the client: their snack/drink list and prices, whether the expense categories fit, whether cashiers may restock, and whether a customer discount should also cover items added at checkout.
-11. Phase 8: advanced reports (net profit = income - expenses, utilization, busiest hours, top customers, snack sales, CSV/PDF export).
+11. Run the Phase 8 checks (step 7 items 27–29). Ask the client: their opening hours (for usage %), and which report numbers they look at most (to put first).
+12. Phase 9: offline hardening (full offline day, sync status/retry, Sentry, limit synced history, backups).
 
 ### Open items from Phase 4
 

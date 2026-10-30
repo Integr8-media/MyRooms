@@ -124,6 +124,9 @@ export type IncomeEntry = {
   receivedBy: string | null | undefined;
   /** The bill was voided: none of its money counts. */
   billVoided: boolean;
+  /** Phase 8 reports: the bill (= session) and its customer, if any. */
+  billId?: string | null;
+  customerId?: string | null;
 };
 
 export type IncomeFilter = { branchId?: string | null; receivedBy?: string | null };
