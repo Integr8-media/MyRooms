@@ -60,9 +60,11 @@ jest.mock('@/features/workspace/WorkspaceProvider', () => ({
       { id: 'B', name: 'Maadi' },
     ],
     role: mockRole,
+    features: { customers: false, snacks: false, expenses: false },
     can: (p: string) => p !== 'income.view' || mockRole !== 'cashier',
   }),
 }));
+jest.mock('@/features/reports/share', () => ({ shareCsv: jest.fn(), sharePdf: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), canGoBack: () => true },
 }));
@@ -97,7 +99,7 @@ describe('IncomeScreen (owner)', () => {
     await render(<IncomeScreen />);
     await fireEvent.press(screen.getAllByText('Maadi')[0]!);
     expect(screen.getByTestId('income-total')).toHaveTextContent(money(4000));
-    expect(screen.queryByTestId('income-by-branch')).toBeNull();
+    expect(screen.queryByTestId('branch-compare')).toBeNull();
   });
 
   it('this week adds earlier days and lists every day of the week', async () => {

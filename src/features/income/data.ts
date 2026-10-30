@@ -16,6 +16,8 @@ export type IncomeRow = {
   bill_number: number | null;
   station_name: string | null;
   station_type_id: string | null;
+  bill_id?: string | null;
+  customer_id?: string | null;
 };
 
 /**
@@ -26,7 +28,7 @@ export type IncomeRow = {
 export function useIncomeRows(orgId: string | null | undefined, window: [string, string]) {
   return useQuery<IncomeRow>(
     `SELECT p.id, p.kind, p.method, p.amount, p.paid_at, p.branch_id, p.received_by,
-            b.status AS bill_status, b.number AS bill_number,
+            p.bill_id, x.customer_id, b.status AS bill_status, b.number AS bill_number,
             st.name AS station_name, st.station_type_id
        FROM payments p
        LEFT JOIN bills b ON b.id = p.bill_id
@@ -48,6 +50,8 @@ export function toIncomeEntry(row: IncomeRow): IncomeEntry {
     stationTypeId: row.station_type_id,
     receivedBy: row.received_by,
     billVoided: row.bill_status === 'void',
+    billId: row.bill_id ?? null,
+    customerId: row.customer_id ?? null,
   };
 }
 

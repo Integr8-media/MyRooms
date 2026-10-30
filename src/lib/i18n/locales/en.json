@@ -732,5 +732,95 @@
       "snacks": "Snacks & drinks purchase",
       "other": "Other"
     }
+  },
+  "reports": {
+    "title": "Reports",
+    "view": {
+      "overview": "Overview",
+      "usage": "Usage",
+      "customers": "Customers",
+      "snacks": "Snacks & drinks"
+    },
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "exportFailed": "Couldn't export the report. Please try again.",
+    "documentTitle": "{{org}} report",
+    "madeAt": "Made {{when}}",
+    "branchLine": "Branch: {{branch}}",
+    "previous": {
+      "today": "Yesterday",
+      "week": "Last week",
+      "month": "Last month",
+      "custom": "Previous {{count}} days"
+    },
+    "comparedWith": "{{period}}: {{amount}}",
+    "noEarlier": "nothing to compare",
+    "profit": {
+      "title": "Net profit",
+      "income": "Income",
+      "expenses": "Expenses",
+      "profit": "Net profit",
+      "byCategory": "Expenses by category",
+      "noExpenses": "No expenses in this period.",
+      "hint": "Net profit is income minus expenses (both by the day they happened)."
+    },
+    "branches": {
+      "title": "Compare branches",
+      "line": "Income {{income}} · Expenses {{expenses}} · Usage {{usage}}",
+      "lineNoExpenses": "Income {{income}} · Usage {{usage}}"
+    },
+    "usage": {
+      "title": "Station usage",
+      "overall": "{{pct}} of station time used",
+      "hours": "{{used}} h used of {{available}} h",
+      "byType": "By station type",
+      "byStation": "By station",
+      "heatmap": "Busiest hours",
+      "heatmapHint": "Average number of stations in use, by day and hour. Darker = busier.",
+      "peak": "Busiest: {{day}} at {{hour}} · stations in use on average: {{busy}}",
+      "nothing": "No station time in this period.",
+      "noStations": "No stations yet.",
+      "howCounted": "Usage counts the whole day (24 hours), up to now. Cancelled sessions don't count. Stations added during the period count from the day they were added."
+    },
+    "customers": {
+      "title": "Top customers",
+      "visits": "Visits: {{count}}",
+      "nothing": "No payments from saved customers in this period.",
+      "hint": "Money paid in the period, for sessions linked to a customer."
+    },
+    "snacks": {
+      "title": "Snack & drink sales",
+      "total": "Sold: {{count}} · {{amount}}",
+      "quantity": "Sold: {{count}}",
+      "nothing": "Nothing sold in this period.",
+      "hint": "Counted on the day they were added to a session. Cancelled sessions and void bills don't count."
+    },
+    "table": {
+      "summary": "Summary",
+      "metric": "Figure",
+      "thisPeriod": "This period",
+      "previousPeriod": "Previous period",
+      "change": "Change",
+      "method": "Payment method",
+      "amount": "Amount (EGP)",
+      "branch": "Branch",
+      "income": "Income (EGP)",
+      "expenses": "Expenses (EGP)",
+      "profit": "Net profit (EGP)",
+      "usage": "Usage %",
+      "stationType": "Station type",
+      "station": "Station",
+      "hoursUsed": "Hours used",
+      "day": "Date",
+      "weekday": "Day",
+      "customer": "Customer",
+      "phone": "Phone",
+      "visits": "Visits",
+      "product": "Product",
+      "quantity": "Quantity",
+      "category": "Category",
+      "payments": "Payments",
+      "refunds": "Refunds"
+    }
   }
 }

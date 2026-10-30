@@ -1,6 +1,6 @@
 # MyRooms — Gaming Center Management: Project Plan
 
-> Status: **Phase 7 code done** (branch `feature/phase-7-optional-modules`): customers (search by phone, default discount applied to the bill, visit history), snacks & drinks on sessions and bills with per-branch stock (restock, count, low-stock warning), and expenses per branch, each hidden when its toggle is off. MVP code (Phases 0–6) is complete; waiting for the VPS to test end to end and run the pilot. Next: Phase 8 (advanced reports). Last updated: 2026-10-30.
+> Status: **Phase 8 code done** (branch `feature/phase-8-advanced-reports`): a Reports screen for owners and managers with net profit (income − expenses) and the change against the previous period, branch comparison, station usage per station and type, a busiest-hours heat map, top customers and snack sales, exported as CSV or PDF. Worked out on the device; no server changes. MVP code (Phases 0–6) and Phase 7 are complete; waiting for the VPS to test end to end and run the pilot. Next: Phase 9 (offline hardening). Last updated: 2026-10-30.
 
 ## 1. Product summary
 
