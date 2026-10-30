@@ -33,6 +33,9 @@ export const ERROR_KEYS = [
   'invalid_discount',
   'invalid_amount',
   'reason_required',
+  'invalid_customer',
+  'invalid_product',
+  'invalid_quantity',
   // Supabase Auth error codes.
   'invalid_credentials',
   'email_exists',

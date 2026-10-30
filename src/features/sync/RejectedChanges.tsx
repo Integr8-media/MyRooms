@@ -17,7 +17,16 @@ type Row = UploadRejectionRow & { station_name: string | null };
 type Parsed = {
   row: Row;
   data: Record<string, unknown>;
-  kind: 'reservation_new' | 'reservation_change' | 'walk_in' | 'session_change' | 'other';
+  kind:
+    | 'reservation_new'
+    | 'reservation_change'
+    | 'walk_in'
+    | 'session_change'
+    | 'item'
+    | 'customer'
+    | 'stock'
+    | 'expense'
+    | 'other';
 };
 
 const errorKeyOf = (value: string | null): ErrorKey =>
@@ -37,7 +46,10 @@ function parse(row: Row): Parsed {
   if (row.table_name === 'sessions') {
     if (data.kind === 'reservation') kind = isNew ? 'reservation_new' : 'reservation_change';
     else kind = isNew ? 'walk_in' : 'session_change';
-  }
+  } else if (row.table_name === 'session_items') kind = 'item';
+  else if (row.table_name === 'customers') kind = 'customer';
+  else if (row.table_name === 'stock_movements') kind = 'stock';
+  else if (row.table_name === 'expenses') kind = 'expense';
   return { row, data, kind };
 }
 
@@ -96,7 +108,8 @@ export function RejectedChanges() {
           start != null
             ? `${formatDay(rangeToForm(start, start, timeZone).date, i18n.language)} ${timeRange(start, end, timeZone)}`
             : null;
-        const details = [row.station_name, when, str(p.data.customer_name)]
+        // Items, customers and products have a name; reservations a customer name.
+        const details = [row.station_name, when, str(p.data.customer_name), str(p.data.name)]
           .filter(Boolean)
           .join(' · ');
         return (

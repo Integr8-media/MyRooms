@@ -46,6 +46,20 @@ const RULES = {
    * branches. Cashiers instead see only the money they took themselves today (end of shift).
    */
   'income.view': ['owner', 'manager'],
+  /** Customers module: add customers, edit name/phone/notes, link them to sessions. */
+  'customers.manage': ['owner', 'manager', 'cashier'],
+  /** A customer's default discount (applied to their bills). Audited. */
+  'customers.discount': ['owner', 'manager'],
+  /** Snacks module: products and their prices (like rate rules). Audited. */
+  'products.edit': ['owner'],
+  /** Add snacks and drinks to a session, and remove them while the session is running. */
+  'items.sell': ['owner', 'manager', 'cashier'],
+  /** Remove items after the session ended (before any payment). Managers: their branches. */
+  'items.removeAfterEnd': ['owner', 'manager'],
+  /** Restock and correct stock counts. Managers: their branches. Audited. */
+  'stock.manage': ['owner', 'manager'],
+  /** Expenses module: record, edit and delete expenses. Managers: their branches. Audited. */
+  'expenses.manage': ['owner', 'manager'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof RULES;

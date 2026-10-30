@@ -156,6 +156,8 @@ const sessions = new Table(
     players: column.integer,
     customer_name: column.text,
     customer_phone: column.text,
+    /** Phase 7: the customer (customers module); name/phone above are still filled. */
+    customer_id: column.text,
     created_by: column.text,
     ended_by: column.text,
     created_at: column.text,
@@ -231,6 +233,95 @@ const payments = new Table(
   { indexes: { bill: ['bill_id'], branch_paid: ['branch_id', 'paid_at'] } },
 );
 
+/** Phase 7 (customers module). Shared by every branch of the organization. */
+const customers = new Table(
+  {
+    org_id: column.text,
+    name: column.text,
+    phone: column.text,
+    notes: column.text,
+    default_discount_pct: column.integer,
+    is_active: column.integer,
+    created_by: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { org: ['org_id'], phone: ['org_id', 'phone'] } },
+);
+
+/** Phase 7 (snacks module). Price in piasters. */
+const products = new Table(
+  {
+    org_id: column.text,
+    name: column.text,
+    category: column.text,
+    price: column.integer,
+    track_stock: column.integer,
+    low_stock_at: column.integer,
+    sort_order: column.integer,
+    is_active: column.integer,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { org: ['org_id'] } },
+);
+
+/**
+ * Products sold during a session. The server sets name and unit_price from the product and
+ * keeps the bill's items_amount; on the device, add up these rows instead. Never updated.
+ */
+const session_items = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    session_id: column.text,
+    product_id: column.text,
+    name: column.text,
+    quantity: column.integer,
+    unit_price: column.integer,
+    created_by: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { session: ['session_id'], branch_product: ['branch_id', 'product_id'] } },
+);
+
+/**
+ * Restocks ('purchase') and count corrections ('adjustment'). Stock in a branch =
+ * sum(stock_movements.quantity) - sum(session_items.quantity) (sales are not movements).
+ */
+const stock_movements = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    product_id: column.text,
+    quantity: column.integer,
+    reason: column.text,
+    note: column.text,
+    created_by: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { branch_product: ['branch_id', 'product_id'] } },
+);
+
+/** Owners and managers only. spent_on is a local date "YYYY-MM-DD". */
+const expenses = new Table(
+  {
+    org_id: column.text,
+    branch_id: column.text,
+    category: column.text,
+    amount: column.integer,
+    method: column.text,
+    spent_on: column.text,
+    note: column.text,
+    created_by: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { branch_date: ['branch_id', 'spent_on'] } },
+);
+
 /**
  * Device only (never synced): changes the server refused for good, e.g. a reservation that
  * lost a double-booking race while offline. The connector records them so staff can see what
@@ -262,6 +353,11 @@ export const AppSchema = new Schema({
   session_segments,
   bills,
   payments,
+  customers,
+  products,
+  session_items,
+  stock_movements,
+  expenses,
   upload_rejections,
 });
 
@@ -280,4 +376,9 @@ export type SessionRow = Row<Database['sessions']>;
 export type SessionSegmentRow = Row<Database['session_segments']>;
 export type BillRow = Row<Database['bills']>;
 export type PaymentRow = Row<Database['payments']>;
+export type CustomerRow = Row<Database['customers']>;
+export type ProductRow = Row<Database['products']>;
+export type SessionItemRow = Row<Database['session_items']>;
+export type StockMovementRow = Row<Database['stock_movements']>;
+export type ExpenseRow = Row<Database['expenses']>;
 export type UploadRejectionRow = Row<Database['upload_rejections']>;

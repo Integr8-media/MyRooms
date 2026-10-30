@@ -14,6 +14,7 @@ import {
   type FinalBill,
   type PaymentMethod,
 } from '@/domain/billing';
+import { customerDiscount, customerDiscountReason, itemsTotal } from '@/domain/items';
 import type { Piasters } from '@/domain/money';
 import { parseTimestamp } from '@/domain/sessions';
 import { powersync } from '@/lib/powersync/database';
@@ -91,17 +92,36 @@ export async function insertBill(tx: Transaction, sessionId: string, now = Date.
   // If the session can't be priced here, the bill shows 0 until the server prices it.
   const priced = await priceLocally(tx, session);
   const timeAmount = priced?.timeAmount ?? 0;
+  // Same as public.create_bill(): the items, and the customer's default discount.
+  const items = itemsTotal(
+    await tx.getAll<{ quantity: number; unit_price: number }>(
+      'SELECT quantity, unit_price FROM session_items WHERE session_id = ?',
+      [sessionId],
+    ),
+  );
+  const customer = session.customer_id
+    ? await tx.getOptional<{ default_discount_pct: number | null }>(
+        'SELECT default_discount_pct FROM customers WHERE id = ?',
+        [session.customer_id],
+      )
+    : null;
+  const percent = customer?.default_discount_pct ?? 0;
+  const discount = customerDiscount(timeAmount + items, percent);
   await tx.execute(
     `INSERT INTO bills (id, org_id, branch_id, session_id, number, time_amount, items_amount,
-       discount_amount, total, paid_amount, status, details, closed_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, NULL, ?, 0, 0, ?, 0, 'open', ?, ?, ?, ?)`,
+       discount_amount, discount_reason, total, paid_amount, status, details, closed_at,
+       created_at, updated_at)
+     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 0, 'open', ?, ?, ?, ?)`,
     [
       sessionId,
       session.org_id,
       session.branch_id,
       sessionId,
       timeAmount,
-      timeAmount,
+      items,
+      discount,
+      discount > 0 ? customerDiscountReason(percent) : null,
+      timeAmount + items - discount,
       priced ? JSON.stringify(priced.details) : null,
       session.actual_end ?? iso(now),
       iso(now),
@@ -123,7 +143,7 @@ type BillState = {
   status: string | null;
 };
 
-/** The bill, what it comes to and what was paid so far (from the local payments). */
+/** The bill, what it comes to and what was paid so far (from the local items and payments). */
 async function billState(tx: Transaction, billId: string) {
   const bill = await tx.getOptional<BillState>(
     'SELECT id, time_amount, items_amount, discount_amount, status FROM bills WHERE id = ?',
@@ -135,9 +155,13 @@ async function billState(tx: Transaction, billId: string) {
     'SELECT kind, amount FROM payments WHERE bill_id = ?',
     [billId],
   );
+  const items = await tx.getAll<{ quantity: number; unit_price: number }>(
+    'SELECT quantity, unit_price FROM session_items WHERE session_id = ?',
+    [billId],
+  );
   const amounts = {
     timeAmount: bill.time_amount ?? 0,
-    itemsAmount: bill.items_amount ?? 0,
+    itemsAmount: itemsTotal(items),
     discountAmount: bill.discount_amount ?? 0,
   };
   return {
